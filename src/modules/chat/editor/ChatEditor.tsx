@@ -160,7 +160,7 @@ export const ChatEditor = () => {
             )}
 
             <div className="space-y-3">
-                {config.messagesHistory.map((msg, index) => (
+                {config.messagesHistory.map((msg) => (
                     <div 
                         key={msg.id} 
                         className={`relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 group

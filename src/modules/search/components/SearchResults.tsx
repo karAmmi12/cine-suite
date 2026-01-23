@@ -2,10 +2,9 @@ import { type SearchResult } from "../../../core/types/schema";
 
 interface SearchResultsProps {
   results: SearchResult[];
-  query: string;
 }
 
-export const SearchResults = ({ results, query }: SearchResultsProps) => {
+export const SearchResults = ({ results }: SearchResultsProps) => {
   return (
     <div className="w-full min-h-screen bg-white text-left pt-6 pl-4 md:pl-36 pr-4 font-sans">
       {/* Barre de stats (Fake) */}

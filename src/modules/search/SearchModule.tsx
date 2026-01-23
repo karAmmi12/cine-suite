@@ -44,7 +44,7 @@ export const SearchModule = () => {
       <div className="min-h-screen bg-white">
         {/* Header Fixe (Barre de recherche en haut) */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 flex items-center shadow-sm z-10">
-            <span className="text-xl font-bold mr-8" style={{ color: scene.config?.accentColor }}>
+            <span className="text-xl font-bold mr-8" style={{ color: scene?.globalSettings?.accentColor }}>
                 {config.brandName}
             </span>
             <div className="relative flex-1 max-w-2xl">
@@ -59,7 +59,7 @@ export const SearchModule = () => {
         </div>
 
         {/* Liste des résultats */}
-        <SearchResults results={config.results} query={config.triggerText} />
+        <SearchResults results={config.results} />
       </div>
     );
   }
@@ -76,7 +76,7 @@ export const SearchModule = () => {
             className="h-24 object-contain max-w-[300px]" // Taille ajustable
           />
         ) : (
-          <h1 className="text-8xl font-bold tracking-tighter" style={{ color: scene?.config?.accentColor || '#4285F4' }}>
+          <h1 className="text-8xl font-bold tracking-tighter" style={{ color: scene?.globalSettings?.accentColor || '#4285F4' }}>
             {config.brandName}
           </h1>
         )}

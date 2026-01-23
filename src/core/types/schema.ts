@@ -46,7 +46,6 @@ export interface ChatModuleConfig extends BaseModuleConfig {
   contactAvatar?: string;   // URL ou Base64 (Optionnel)
   messagesHistory: ChatMessage[]; // Les messages passés
   messageToType: string;    // Le message que l'acteur va taper
-  contactAvatar?: string;   // URL ou Base64 (Optionnel)
 }
 
 // 3. Union discriminante (Le type polymorphe final)
@@ -64,6 +63,7 @@ export interface SceneDefinition {
   globalSettings: {
     themeId: 'light' | 'dark' | 'retro' | 'hacker';
     zoomLevel: number;    // Pour adapter aux différentes tailles d'écran
+    accentColor?: string; // Couleur principale (ex: '#3b82f6')
   };
   module: SceneModule;    // Le contenu actif de la scène
 }

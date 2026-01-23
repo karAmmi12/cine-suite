@@ -31,7 +31,7 @@ export const SearchEditor = () => {
   // Met à jour la couleur globale (accentColor)
   const updateGlobalColor = (color: string) => {
     updateScene({
-      config: { ...currentScene.config, accentColor: color }
+      globalSettings: { ...currentScene.globalSettings, accentColor: color }
     });
   };
 
@@ -158,11 +158,11 @@ export const SearchEditor = () => {
                         <div className="flex items-center gap-2">
                             <input 
                                 type="color" 
-                                value={currentScene.config?.accentColor || '#3b82f6'}
+                                value={currentScene.globalSettings?.accentColor || '#3b82f6'}
                                 onChange={(e) => updateGlobalColor(e.target.value)}
                                 className="h-10 w-14 border rounded cursor-pointer"
                             />
-                            <span className="text-xs text-gray-400">{currentScene.config?.accentColor}</span>
+                            <span className="text-xs text-gray-400">{currentScene.globalSettings?.accentColor || '#3b82f6'}</span>
                         </div>
                     </div>
                 </div>
