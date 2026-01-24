@@ -41,7 +41,7 @@ export const SearchModule = () => {
   // --- RENDU : PAGE DE RÉSULTATS ---
   if (showResults) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="h-screen w-full bg-white overflow-y-auto">
         {/* Header Fixe (Barre de recherche en haut) */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 flex items-center shadow-sm z-10">
             <span className="text-xl font-bold mr-8" style={{ color: scene?.globalSettings?.accentColor }}>

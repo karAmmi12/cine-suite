@@ -47,7 +47,7 @@ export const ChatModule = () => {
   if (!config) return null;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 font-sans">
+    <div className="flex flex-col h-[100dvh] bg-gray-100 font-sans overflow-hidden">
       
       {/* --- HEADER (Style WhatsApp/iOS) --- */}
       <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10 border-b border-gray-200">
@@ -72,9 +72,8 @@ export const ChatModule = () => {
       </div>
 
       {/* --- BODY (Liste des messages) --- */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#e5e5e5]"> 
-        {/* Note: bg-[#e5e5e5] est une couleur neutre classique de fond de chat */}
-        
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#e5e5e5] touch-pan-y"> 
+        {/* "touch-pan-y" aide les navigateurs mobiles à comprendre qu'on veut scroller verticalement */}        
         {messages.map((msg) => (
           <div 
             key={msg.id} 

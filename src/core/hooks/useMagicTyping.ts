@@ -1,48 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export const useMagicTyping = (targetText: string, active: boolean = true) => {
   const [displayValue, setDisplayValue] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
+  // Fonction pour ajouter des caractères
+  const addChars = useCallback((count: number = 1) => {
+    setDisplayValue((prev) => {
+      const nextIndex = prev.length + count;
+      if (nextIndex >= targetText.length) {
+        setIsComplete(true);
+        return targetText;
+      }
+      return targetText.slice(0, nextIndex);
+    });
+  }, [targetText]);
+
   useEffect(() => {
     if (!active) return;
 
+    // 1. Gestion Clavier (Ordinateur)
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Si on appuie sur Entrée, on considère que c'est fini
       if (e.key === 'Enter') {
         setDisplayValue(targetText);
         setIsComplete(true);
         return;
       }
-
-      // Si on appuie sur Backspace (effacer)
       if (e.key === 'Backspace') {
         setDisplayValue((prev) => prev.slice(0, -1));
         setIsComplete(false);
         return;
       }
-
-      // Pour n'importe quelle autre touche (lettres, chiffres, espace...)
-      // On ajoute le PROCHAIN caractère du texte cible
+      // Ignore les touches de commande (Ctrl, Alt, etc.)
       if (e.key.length === 1) { 
-        setDisplayValue((prev) => {
-          const nextIndex = prev.length;
-          // Si on a déjà tout écrit, on ne fait rien
-          if (nextIndex >= targetText.length) {
-            setIsComplete(true);
-            return prev;
-          }
-          return targetText.slice(0, nextIndex + 1);
-        });
+        addChars(1);
       }
     };
 
-    // On écoute tout le document (pas besoin de cliquer dans l'input)
-    window.addEventListener('keydown', handleKeyDown);
+    // 2. Gestion Tactile (Mobile)
+    // On ajoute 2-3 caractères par tap pour que ça aille plus vite sur mobile
+    const handleTouch = (e: TouchEvent) => {
+      // On vérifie qu'on ne touche pas un bouton ou un lien
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'BUTTON' || target.tagName === 'A' || target.closest('button')) return;
+      
+      addChars(3); 
+    };
 
-    // Nettoyage quand le composant est détruit
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [targetText, active]);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('touchstart', handleTouch);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('touchstart', handleTouch);
+    };
+  }, [targetText, active, addChars]);
 
   return { displayValue, isComplete };
 };

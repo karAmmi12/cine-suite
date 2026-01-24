@@ -6,7 +6,7 @@ interface SearchResultsProps {
 
 export const SearchResults = ({ results }: SearchResultsProps) => {
   return (
-    <div className="w-full min-h-screen bg-white text-left pt-6 pl-4 md:pl-36 pr-4 font-sans">
+    <div className="bg-white text-left pt-4 pl-4 md:pl-36 pr-4 font-sans">
       {/* Barre de stats (Fake) */}
       <div className="text-gray-500 text-sm mb-6">
         Environ {Math.floor(Math.random() * 50000)} résultats (0,{(Math.random() * 0.9).toFixed(2)} secondes)
