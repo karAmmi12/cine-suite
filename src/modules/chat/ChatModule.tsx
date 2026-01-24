@@ -22,32 +22,47 @@ export const ChatModule = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, displayValue]);
 
+  // Fonction pour envoyer le message
+  const sendMessage = () => {
+    if (isComplete && displayValue.length > 0) {
+      const newMessage: ChatMessage = {
+        id: Date.now().toString(),
+        isMe: true,
+        text: config.triggerText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent'
+      };
+      setMessages((prev) => [...prev, newMessage]);
+    }
+  };
+
   // Gestion de l'envoi (Touche Entrée)
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && isComplete) {
-        // On ajoute le message tapé à la liste
-        const newMessage: ChatMessage = {
-          id: Date.now().toString(),
-          isMe: true,
-          text: config.triggerText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'sent'
-        };
-        setMessages((prev) => [...prev, newMessage]);
-        
-        // Ici, idéalement, on devrait resetter le MagicTyping, 
-        // mais pour l'instant on va juste laisser le message envoyé.
+        sendMessage();
       }
     };
     window.addEventListener('keydown', handleEnter);
     return () => window.removeEventListener('keydown', handleEnter);
   }, [isComplete, config.triggerText]);
 
+  // Auto-submit quand le typing est complet (uniquement sur mobile/tactile)
+  useEffect(() => {
+    // Détecte si c'est un appareil tactile
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    if (isTouchDevice && isComplete && displayValue.length > 0) {
+      // Petit délai pour que l'utilisateur voie le texte complet
+      const timer = setTimeout(() => sendMessage(), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, displayValue]);
+
   if (!config) return null;
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-gray-100 font-sans overflow-hidden">
+    <div className="flex flex-col h-dvh bg-gray-100 font-sans overflow-hidden">
       
       {/* --- HEADER (Style WhatsApp/iOS) --- */}
       <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10 border-b border-gray-200">
@@ -102,19 +117,23 @@ export const ChatModule = () => {
       <div className="bg-white p-3 flex items-end gap-3 border-t border-gray-200">
         <PlusButton />
         
-        <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2.5 min-h-[44px] border border-gray-200 focus-within:border-blue-500 transition-colors">
+        <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2.5 min-h-11 border border-gray-200 focus-within:border-blue-500 transition-colors">
             {/* C'est ici que le Magic Typing s'affiche */}
-            <span className="text-[17px] text-gray-900 break-words">
+            <span className="text-[17px] text-gray-900 wrap-break-word">
                 {displayValue}
                 {!isComplete && (
-                  <span className="inline-block w-[2px] h-5 bg-blue-500 animate-pulse align-middle ml-0.5" />
+                  <span className="inline-block w-0.5 h-5 bg-blue-500 animate-pulse align-middle ml-0.5" />
                 )}
             </span>
              {/* Placeholder si vide */}
             {displayValue.length === 0 && <span className="text-gray-400 select-none">Message...</span>}
         </div>
 
-        <button className={`p-2.5 rounded-full transition-all ${displayValue.length > 0 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+        <button 
+          onClick={sendMessage}
+          disabled={!isComplete}
+          className={`p-2.5 rounded-full transition-all touch-manipulation ${isComplete ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}
+        >
           <Send className="w-5 h-5 ml-0.5" />
         </button>
       </div>

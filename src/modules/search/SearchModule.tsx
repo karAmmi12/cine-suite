@@ -36,6 +36,18 @@ export const SearchModule = () => {
     return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, [displayValue]);
 
+  // Auto-submit quand le typing est complet (uniquement sur mobile/tactile)
+  useEffect(() => {
+    // Détecte si c'est un appareil tactile
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    if (isTouchDevice && isComplete && displayValue.length > 0 && !showResults) {
+      // Petit délai pour que l'utilisateur voie le texte complet
+      const timer = setTimeout(() => setShowResults(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, displayValue, showResults]);
+
   if (!config) return <div className="bg-black h-screen w-screen" />;
 
   // --- RENDU : PAGE DE RÉSULTATS ---
@@ -66,14 +78,14 @@ export const SearchModule = () => {
 
   // --- RENDU : PAGE D'ACCUEIL ---
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-800">
+    <div className="flex flex-col items-center justify-center h-screen w-full bg-white text-gray-800 overflow-hidden">
       {/* --- LOGO --- */}
       <div className="mb-8">
         {config.brandLogoUrl ? (
           <img 
             src={config.brandLogoUrl} 
             alt="Logo" 
-            className="h-24 object-contain max-w-[300px]" // Taille ajustable
+            className="h-24 object-contain max-w-75"
           />
         ) : (
           <h1 className="text-8xl font-bold tracking-tighter" style={{ color: scene?.globalSettings?.accentColor || '#4285F4' }}>
@@ -88,7 +100,7 @@ export const SearchModule = () => {
           <div className="flex-1 text-xl font-medium text-gray-900 outline-none select-none">
             {displayValue}
             {!isComplete && (
-              <span className="inline-block w-[2px] h-6 bg-blue-500 animate-pulse align-middle ml-0.5" />
+              <span className="inline-block w-0.5 h-6 bg-blue-500 animate-pulse align-middle ml-0.5" />
             )}
           </div>
           <Mic className="w-5 h-5 text-blue-500 cursor-pointer ml-4" />

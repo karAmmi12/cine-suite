@@ -12,7 +12,7 @@ export const SearchResults = ({ results }: SearchResultsProps) => {
         Environ {Math.floor(Math.random() * 50000)} résultats (0,{(Math.random() * 0.9).toFixed(2)} secondes)
       </div>
 
-      <div className="max-w-[650px] space-y-8">
+      <div className="max-w-162.5 space-y-8 pb-8">
         {results.map((result) => (
           <div key={result.id} className="group">
             {/* URL + Favicon simulé */}

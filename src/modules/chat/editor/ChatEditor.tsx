@@ -78,8 +78,8 @@ export const ChatEditor = () => {
   // --- 3. RENDU VISUEL ---
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-8 font-sans pb-32">
-      <div className="max-w-3xl mx-auto">
+    <div className="h-screen bg-gray-50 text-gray-900 font-sans overflow-y-auto">
+      <div className="max-w-3xl mx-auto p-8 pb-32">
         
         {/* === HEADER === */}
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-4 z-20">
