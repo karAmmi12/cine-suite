@@ -10,18 +10,36 @@ interface SceneState {
 }
 
 const defaultScene: SceneDefinition = {
-  id: 'demo-chat',
-  meta: { projectName: 'Demo', sceneName: 'Séquence SMS Rupture', createdAt: new Date().toISOString() },
+id: 'demo-mail',
+  meta: { projectName: 'Demo', sceneName: 'Emails Confidentiels', createdAt: new Date().toISOString() },
   globalSettings: { themeId: 'light', zoomLevel: 1 },
   module: {
-    type: 'chat',
-    triggerText: "Je sais ce que tu as fait hier soir...", // C'est ce texte qui sera utilisé par le Magic Typing
-    contactName: "Sarah",
-    messageToType: "Je sais ce que tu as fait hier soir...",
-    messagesHistory: [
-      { id: '1', isMe: false, text: "Tu rentres à quelle heure ?", time: "19:30" },
-      { id: '2', isMe: true, text: "Pas tard, je finis le dossier.", time: "19:32", status: 'read' },
-      { id: '3', isMe: false, text: "Menteur.", time: "23:45" },
+    type: 'mail',
+    triggerText: "Je démissionne immédiatement.", // Texte Magic Typing pour un nouveau mail
+    userEmail: "thomas.anderson@metacortex.com",
+    emails: [
+      {
+        id: '1',
+        folder: 'inbox',
+        read: false,
+        senderName: "Directeur RH",
+        senderEmail: "hr@metacortex.com",
+        subject: "Convocation urgente",
+        preview: "Monsieur Anderson, merci de passer à mon bureau...",
+        body: "Monsieur Anderson,\n\nNous avons relevé des irrégularités dans vos horaires.\nMerci de passer à mon bureau immédiatement.\n\nCordialement,\nLa Direction.",
+        date: "10:42"
+      },
+      {
+        id: '2',
+        folder: 'inbox',
+        read: true,
+        senderName: "Maman",
+        senderEmail: "maman@gmail.com",
+        subject: "Repas de dimanche",
+        preview: "N'oublie pas d'apporter le dessert.",
+        body: "Coucou mon chéri,\n\nTu viens toujours dimanche ? Ton père a préparé le jardin.\n\nBisous.",
+        date: "Hier"
+      }
     ]
   }
 };
