@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, Film, MessageSquare, Search, Mail, Terminal, X, Wand2, CheckCircle } from 'lucide-react';
-import { useSceneStore } from '../core/store/sceneStore';
+import { useProjectStore } from '../core/store/projectStore';
 import { generateSearchConfig } from '../core/services/configGeneratorService';
 import { generateChatConfig } from '../core/services/configGeneratorService';
 import { generateMailConfig } from '../core/services/configGeneratorService';
@@ -17,7 +17,8 @@ export const CineAssistant = ({ onClose }: CineAssistantProps) => {
   const [selectedType, setSelectedType] = useState<SceneType | null>(null);
   const [description, setDescription] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const { updateScene, currentScene } = useSceneStore();
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
 
   const sceneTypes = [
     {
@@ -174,7 +175,7 @@ Réponds UNIQUEMENT avec le JSON, sans explication.`;
       }
 
       // Applique le module généré
-      updateScene({ 
+      updateCurrentScene({ 
         module: generatedModule
       });
 

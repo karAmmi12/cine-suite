@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useSceneStore } from '../../core/store/sceneStore';
+import { useProjectStore } from '../../core/store/projectStore';
 import type { MailModuleConfig } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 import { Menu, Star, Inbox, Send, Trash, Edit3, ArrowLeft, Paperclip, StarIcon, AlertCircle } from 'lucide-react';
 
 export const MailModule = () => {
-  const scene = useSceneStore((state) => state.currentScene);
+  const scene = useProjectStore((state) => state.getCurrentScene());
   const config = scene?.module as MailModuleConfig;
 
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);

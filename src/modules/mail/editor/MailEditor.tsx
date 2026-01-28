@@ -1,17 +1,20 @@
 import { useRef, useState } from 'react';
 import { Plus, Trash, Play, Download, Upload, Mail, CheckSquare, Square, Sparkles, Loader2, Key } from 'lucide-react';
-import { useSceneStore } from '../../../core/store/sceneStore';
+import { useProjectStore } from '../../../core/store/projectStore';
 import type { MailModuleConfig, MailMessage } from '../../../core/types/schema';
 import { downloadSceneConfig, readJsonFile } from '../../../core/utils/fileHandler';
 import { ImagePicker } from '../../../ui/atoms/ImagePicker';
 import { generateMailConfig } from '../../../core/services/configGeneratorService';
 
 export const MailEditor = () => {
-  const { currentScene, updateScene, loadScene } = useSceneStore();
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  const currentSceneId = useProjectStore((state) => state.currentSceneId);
   
   // Settings & IA
   const globalSettings = currentScene?.globalSettings;
-  const updateGlobalSettings = (settings: any) => updateScene({ globalSettings: settings });
+  const updateGlobalSettings = (settings: any) => updateCurrentScene({ globalSettings: settings });
   const [isGenerating, setIsGenerating] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +51,7 @@ export const MailEditor = () => {
 
   // --- LOGIQUE UPDATE ---
   const updateConfig = (key: keyof MailModuleConfig, value: any) => {
-    updateScene({ module: { ...config, [key]: value } });
+    updateCurrentScene({ module: { ...config, [key]: value } });
   };
 
   const updateMail = (id: string, field: keyof MailMessage, value: any) => {
@@ -81,8 +84,9 @@ export const MailEditor = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const newScene = await readJsonFile(file);
-        loadScene(newScene);
+        await readJsonFile(file);
+        // TODO: Implémenter loadScene dans projectStore
+        alert("Import de scène temporairement désactivé (refactoring en cours)");
     }
   };
 
@@ -114,7 +118,7 @@ export const MailEditor = () => {
             <button onClick={handleExport} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><Download size={18}/></button>
             <div className="w-px h-8 bg-gray-300 mx-2"></div>
             <button 
-                onClick={() => window.open('/', 'CinePlayer', 'popup=yes,width=1280,height=720')}
+                onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=1280,height=720')}
                 className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md shadow-red-200 font-bold text-sm"
             >
               <Play size={16} /> LANCER

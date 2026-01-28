@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Search, Mic, X } from 'lucide-react';
-import { useSceneStore } from '../../core/store/sceneStore';
+import { useProjectStore } from '../../core/store/projectStore';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 import type { SearchModuleConfig } from '../../core/types/schema';
 import { SearchResults } from './components/SearchResults';
 import { WebPageViewer } from './components/WebPageViewer';
 
 export const SearchModule = () => {
-  const scene = useSceneStore((state) => state.currentScene);
+  const scene = useProjectStore((state) => state.getCurrentScene());
   const config = scene?.module as SearchModuleConfig;
   
   const [showResults, setShowResults] = useState(false);
@@ -16,6 +16,14 @@ export const SearchModule = () => {
   const { displayValue, isComplete } = useMagicTyping(config?.triggerText || "", !showResults);
 
   const currentTheme = config?.theme || 'modern';
+
+  // Afficher automatiquement les résultats quand la frappe est terminée
+  useEffect(() => {
+    if (isComplete && displayValue.length > 0 && !showResults) {
+      const timer = setTimeout(() => setShowResults(true), 800); // Petit délai pour effet naturel
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, displayValue, showResults]);
 
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {

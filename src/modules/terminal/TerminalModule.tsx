@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSceneStore } from '../../core/store/sceneStore';
+import { useProjectStore } from '../../core/store/projectStore';
 import type { TerminalModuleConfig } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 import { AlertTriangle, Shield, Server, Code } from 'lucide-react';
 
 export const TerminalModule = () => {
-  const scene = useSceneStore((state) => state.currentScene);
+  const scene = useProjectStore((state) => state.getCurrentScene());
   const config = scene?.module as TerminalModuleConfig;
 
   const [logs, setLogs] = useState<string[]>([]);

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Phone, Video, Send, Check, CheckCheck, Image, Smile } from 'lucide-react';
-import { useSceneStore } from '../../core/store/sceneStore';
+import { useProjectStore } from '../../core/store/projectStore';
 import type { ChatModuleConfig, ChatMessage } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 
 export const ChatModule = () => {
-  const scene = useSceneStore((state) => state.currentScene);
+  const scene = useProjectStore((state) => state.getCurrentScene());
   const config = scene?.module as ChatModuleConfig;
 
   const [messages, setMessages] = useState<ChatMessage[]>(config?.messagesHistory || []);

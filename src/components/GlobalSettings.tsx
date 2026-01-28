@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Settings, Key, X, CheckCircle, Info, Palette } from 'lucide-react';
-import { useSceneStore } from '../core/store/sceneStore';
+import { useProjectStore } from '../core/store/projectStore';
 import { applyTheme, themes, type ThemeId } from '../core/engine/themeEngine';
 
 interface GlobalSettingsProps {
@@ -8,7 +8,8 @@ interface GlobalSettingsProps {
 }
 
 export const GlobalSettings = ({ onClose }: GlobalSettingsProps) => {
-  const { currentScene, updateScene } = useSceneStore();
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
   const [apiKey, setApiKey] = useState(currentScene?.globalSettings?.aiKey || '');
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'api' | 'theme'>('api');
@@ -24,7 +25,7 @@ export const GlobalSettings = ({ onClose }: GlobalSettingsProps) => {
   };
 
   const handleSave = () => {
-    updateScene({
+    updateCurrentScene({
       globalSettings: {
         themeId: currentScene?.globalSettings?.themeId || 'light',
         zoomLevel: currentScene?.globalSettings?.zoomLevel || 100,

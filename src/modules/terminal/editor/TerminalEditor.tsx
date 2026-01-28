@@ -1,23 +1,26 @@
 import { useRef, useState } from 'react';
 import { Play, Download, Upload, Terminal as TerminalIcon, Sparkles, Loader2, Key } from 'lucide-react';
-import { useSceneStore } from '../../../core/store/sceneStore';
+import { useProjectStore } from '../../../core/store/projectStore';
 import type { TerminalModuleConfig } from '../../../core/types/schema';
-import { downloadSceneConfig, readJsonFile } from '../../../core/utils/fileHandler';
+import { downloadSceneConfig } from '../../../core/utils/fileHandler';
 
 export const TerminalEditor = () => {
-  const { currentScene, updateScene, loadScene } = useSceneStore();
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  const currentSceneId = useProjectStore((state) => state.currentSceneId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Settings globaux
   const globalSettings = currentScene?.globalSettings;
-  const updateGlobalSettings = (settings: any) => updateScene({ globalSettings: settings });
+  const updateGlobalSettings = (settings: any) => updateCurrentScene({ globalSettings: settings });
 
   if (!currentScene || currentScene.module.type !== 'terminal') return <div>Erreur</div>;
   const config = currentScene.module as TerminalModuleConfig;
 
   const updateConfig = (key: keyof TerminalModuleConfig, value: any) => {
-    updateScene({ module: { ...config, [key]: value } });
+    updateCurrentScene({ module: { ...config, [key]: value } });
   };
 
   // --- IA PROFESSIONNELLE: Génération contextuelle ---
@@ -90,7 +93,7 @@ Réponds UNIQUEMENT avec un JSON valide (sans markdown):
       const generated = JSON.parse(jsonMatch[0]);
       
       // On applique TOUTE la configuration générée
-      updateScene({ 
+      updateCurrentScene({ 
         module: { 
           ...config,
           triggerText: generated.triggerText,
@@ -127,7 +130,10 @@ Réponds UNIQUEMENT avec un JSON valide (sans markdown):
   const handleImportClick = () => fileInputRef.current?.click();
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) loadScene(await readJsonFile(file));
+    if (file) {
+      // TODO: Implémenter loadScene dans projectStore
+      alert("Import de scène temporairement désactivé (refactoring en cours)");
+    }
   };
 
   return (
@@ -161,7 +167,7 @@ Réponds UNIQUEMENT avec un JSON valide (sans markdown):
                     <div className="w-px h-8 bg-gray-700"></div>
 
                     <button 
-                        onClick={() => window.open('/', 'CinePlayer', 'popup=yes,width=1280,height=720')}
+                        onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=1280,height=720')}
                         className="bg-green-600 text-black px-4 py-2 rounded font-bold hover:bg-green-500 flex items-center gap-2"
                     >
                         <Play size={16}/> RUN

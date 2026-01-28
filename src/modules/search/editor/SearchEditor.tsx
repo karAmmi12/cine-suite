@@ -1,18 +1,20 @@
 import { useRef } from 'react';
 import { useState } from 'react';
 import { generateSearchConfig } from '../../../core/services/configGeneratorService';
-import { Link } from 'react-router-dom';
 import {Sparkles, Loader2, Key, Plus, Trash, Play, Download, Upload, Image, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { LocalImagePicker } from '../../../ui/atoms/LocalImagePicker';
 
 // Imports internes
-import { useSceneStore } from '../../../core/store/sceneStore';
+import { useProjectStore } from '../../../core/store/projectStore';
 import type { SearchModuleConfig, SearchResult } from '../../../core/types/schema';
 import { downloadSceneConfig, readJsonFile } from '../../../core/utils/fileHandler';
 import { ImagePicker } from '../../../ui/atoms/ImagePicker';
 
 export const SearchEditor = () => {
-  const { currentScene, updateScene, loadScene } = useSceneStore();
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  const currentSceneId = useProjectStore((state) => state.currentSceneId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
@@ -28,14 +30,14 @@ export const SearchEditor = () => {
 
   // Met à jour un champ direct (ex: brandName, triggerText)
   const updateConfig = (key: keyof SearchModuleConfig, value: any) => {
-    updateScene({
+    updateCurrentScene({
       module: { ...config, [key]: value }
     });
   };
 
   // Met à jour la couleur globale (accentColor)
   const updateGlobalColor = (color: string) => {
-    updateScene({
+    updateCurrentScene({
       globalSettings: { ...currentScene.globalSettings, accentColor: color }
     });
   };
@@ -124,7 +126,7 @@ export const SearchEditor = () => {
       const generatedConfig = await generateSearchConfig(config.triggerText, { apiKey });
       
       // On applique TOUTE la configuration générée par l'IA
-      updateScene({ 
+      updateCurrentScene({ 
         module: { 
           ...config, 
           brandName: generatedConfig.brandName,
@@ -177,7 +179,8 @@ export const SearchEditor = () => {
       if (newScene.module.type !== 'search') {
         alert("Attention : Ce fichier ne semble pas être une scène de Recherche.");
       }
-      loadScene(newScene);
+      // TODO: Implémenter loadScene dans projectStore
+      alert("Import de scène temporairement désactivé (refactoring en cours)");
       // Reset de l'input pour pouvoir réimporter le même fichier si besoin
       e.target.value = ''; 
     } catch (err) {
@@ -214,7 +217,7 @@ export const SearchEditor = () => {
                     type="password" 
                     placeholder="Clé API Groq..."
                     value={currentScene.globalSettings?.aiKey || ''}
-                    onChange={(e) => updateScene({ globalSettings: { ...currentScene.globalSettings, aiKey: e.target.value } })}
+                    onChange={(e) => updateCurrentScene({ globalSettings: { ...currentScene.globalSettings, aiKey: e.target.value } })}
                     className="bg-transparent border-none outline-none text-xs w-24 focus:w-48 transition-all"
                 />
             </div>
@@ -229,9 +232,12 @@ export const SearchEditor = () => {
 
             <div className="w-px h-8 bg-gray-300 mx-2"></div>
 
-            <Link to="/" target="_blank" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md shadow-blue-200 text-sm font-bold transition-all">
+            <button 
+              onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=1280,height=720')}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md shadow-blue-200 text-sm font-bold transition-all"
+            >
               <Play size={16} /> VOIR LE RÉSULTAT
-            </Link>
+            </button>
           </div>
         </div>
 

@@ -2,18 +2,21 @@ import { useRef, useState } from 'react';
 import { Plus, Trash, Play, Download, Upload, ArrowRightLeft, MessageSquare, Sparkles, Loader2, Key } from 'lucide-react';
 
 // Imports internes
-import { useSceneStore } from '../../../core/store/sceneStore';
+import { useProjectStore } from '../../../core/store/projectStore';
 import type { ChatModuleConfig, ChatMessage } from '../../../core/types/schema';
 import { downloadSceneConfig, readJsonFile } from '../../../core/utils/fileHandler';
 import { ImagePicker } from '../../../ui/atoms/ImagePicker';
 import { generateChatConfig } from '../../../core/services/configGeneratorService';
 
 export const ChatEditor = () => {
-  const { currentScene, updateScene, loadScene } = useSceneStore();
+  const currentScene = useProjectStore((state) => state.getCurrentScene());
+  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  const currentSceneId = useProjectStore((state) => state.currentSceneId);
   
   // Accès aux réglages globaux pour la clé API
   const globalSettings = currentScene?.globalSettings;
-  const updateGlobalSettings = (settings: any) => updateScene({ globalSettings: settings });
+  const updateGlobalSettings = (settings: any) => updateCurrentScene({ globalSettings: settings });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -44,7 +47,7 @@ export const ChatEditor = () => {
       );
       
       // On applique TOUTE la configuration générée
-      updateScene({ 
+      updateCurrentScene({ 
         module: { 
           ...config,
           contactName: generatedConfig.contactName,
@@ -62,7 +65,7 @@ export const ChatEditor = () => {
 
   // --- LOGIQUE DE MISE À JOUR ---
   const updateConfig = (key: keyof ChatModuleConfig, value: any) => {
-    updateScene({ module: { ...config, [key]: value } });
+    updateCurrentScene({ module: { ...config, [key]: value } });
   };
 
   const updateMessage = (id: string, field: keyof ChatMessage, value: any) => {
@@ -98,8 +101,9 @@ export const ChatEditor = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const newScene = await readJsonFile(file);
-      loadScene(newScene);
+      await readJsonFile(file);
+      // TODO: Implémenter loadScene dans projectStore
+      alert("Import de scène temporairement désactivé (refactoring en cours)");
     }
   };
 
@@ -135,7 +139,7 @@ export const ChatEditor = () => {
             <div className="w-px h-8 bg-gray-300 mx-2"></div>
             
             <button 
-                onClick={() => window.open('/', 'CinePlayer', 'popup=yes,width=400,height=800')}
+                onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=400,height=800')}
                 className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-md shadow-green-200 font-bold text-sm transition-all"
             >
               <Play size={16} /> LANCER
