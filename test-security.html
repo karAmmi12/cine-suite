@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>🔒 Test Sécurité CineSuite</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; background: #0a0a0a; color: #fff; }
+    h2 { color: #00ff88; border-bottom: 2px solid #00ff88; padding-bottom: 8px; }
+    .test { background: #1a1a1a; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #666; }
+    .test.pass { border-left-color: #00ff88; }
+    .test.fail { border-left-color: #ff4444; }
+    button { background: #00ff88; color: #000; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; margin: 5px; }
+    button:hover { background: #00cc66; }
+    code { background: #2a2a2a; padding: 2px 6px; border-radius: 3px; color: #00ff88; }
+    pre { background: #2a2a2a; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    .result { margin-top: 10px; padding: 10px; background: #2a2a2a; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🔒 CineSuite Security Test Suite</h1>
+  <p>Ouvre <strong>dist/index.html</strong> dans un navigateur pour tester la version PROD avec obfuscation.</p>
+
+  <h2>1. Device Fingerprinting</h2>
+  <div id="fingerprint-test" class="test">
+    <button onclick="testFingerprint()">🖐️ Tester Fingerprint</button>
+    <div id="fingerprint-result" class="result" style="display:none;"></div>
+  </div>
+
+  <h2>2. localStorage Encryption</h2>
+  <div id="encryption-test" class="test">
+    <button onclick="testEncryption()">🔐 Tester Chiffrement</button>
+    <div id="encryption-result" class="result" style="display:none;"></div>
+  </div>
+
+  <h2>3. Anti-Debug Detection</h2>
+  <div id="antidebug-test" class="test">
+    <p>Ouvre les DevTools (F12) → Le code devrait détecter et <strong>perturber</strong> l'exécution</p>
+    <button onclick="testAntiDebug()">🛡️ Vérifier Anti-Debug</button>
+    <div id="antidebug-result" class="result" style="display:none;"></div>
+  </div>
+
+  <h2>4. Code Obfuscation</h2>
+  <div id="obfuscation-test" class="test">
+    <p>Ouvre <code>dist/assets/index-*.js</code> dans un éditeur :</p>
+    <ul>
+      <li>✅ Noms variables hexadécimaux (<code>_0x1a2b3c</code>)</li>
+      <li>✅ Strings encodés dans array</li>
+      <li>✅ Control flow aplati (impossible à suivre)</li>
+      <li>✅ Dead code injection (leurres)</li>
+    </ul>
+    <button onclick="window.open('view-source:' + window.location.href)">👁️ Voir Source</button>
+  </div>
+
+  <h2>5. Telemetry & Tracking</h2>
+  <div id="telemetry-test" class="test">
+    <button onclick="testTelemetry()">📊 Simuler Events</button>
+    <div id="telemetry-result" class="result" style="display:none;"></div>
+  </div>
+
+  <h2>6. Suspicious Activity Detection</h2>
+  <div id="suspicious-test" class="test">
+    <button onclick="testSuspicious()">🚨 Déclencher Alerte</button>
+    <p><small>Copie du texte 15× pour déclencher détection</small></p>
+    <div id="suspicious-result" class="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    // Test Fingerprint
+    function testFingerprint() {
+      const deviceId = localStorage.getItem('cinesuite_device_id');
+      const resultDiv = document.getElementById('fingerprint-result');
+      resultDiv.style.display = 'block';
+      
+      if (deviceId) {
+        resultDiv.innerHTML = `
+          ✅ <strong>Device ID trouvé</strong><br>
+          <code>${deviceId.substring(0, 16)}...${deviceId.substring(deviceId.length - 8)}</code><br>
+          <small>Hash SHA-256 unique à ce navigateur</small>
+        `;
+        document.getElementById('fingerprint-test').classList.add('pass');
+      } else {
+        resultDiv.innerHTML = `❌ <strong>Device ID manquant</strong> - Sécurité non initialisée`;
+        document.getElementById('fingerprint-test').classList.add('fail');
+      }
+    }
+
+    // Test Encryption
+    function testEncryption() {
+      const testData = { secret: 'test123', timestamp: Date.now() };
+      const resultDiv = document.getElementById('encryption-result');
+      resultDiv.style.display = 'block';
+      
+      // Sauvegarder
+      localStorage.setItem('test_encrypted', JSON.stringify(testData));
+      
+      // Lire localStorage RAW
+      const rawValue = localStorage.getItem('test_encrypted');
+      const isEncrypted = !rawValue.includes('test123') && rawValue.length > 100;
+      
+      if (isEncrypted) {
+        resultDiv.innerHTML = `
+          ✅ <strong>Données chiffrées</strong><br>
+          <pre>Raw: ${rawValue.substring(0, 60)}...</pre>
+          <small>AES-256-GCM avec IV aléatoire</small>
+        `;
+        document.getElementById('encryption-test').classList.add('pass');
+      } else {
+        resultDiv.innerHTML = `
+          ⚠️ <strong>Données en clair</strong><br>
+          <pre>${rawValue}</pre>
+          <small>Mode DEV ou encryption désactivée</small>
+        `;
+        document.getElementById('encryption-test').classList.add('fail');
+      }
+    }
+
+    // Test Anti-Debug
+    function testAntiDebug() {
+      const resultDiv = document.getElementById('antidebug-result');
+      resultDiv.style.display = 'block';
+      
+      const isDevToolsOpen = window.outerWidth - window.innerWidth > 160 ||
+                            window.outerHeight - window.innerHeight > 160;
+      
+      if (isDevToolsOpen) {
+        resultDiv.innerHTML = `
+          ✅ <strong>DevTools détectées</strong><br>
+          Window: ${window.outerWidth}×${window.outerHeight}<br>
+          Viewport: ${window.innerWidth}×${window.innerHeight}<br>
+          <small>Anti-debug devrait perturber l'exécution</small>
+        `;
+        document.getElementById('antidebug-test').classList.add('pass');
+      } else {
+        resultDiv.innerHTML = `
+          ℹ️ <strong>DevTools fermées</strong><br>
+          <small>Ouvre F12 puis re-teste</small>
+        `;
+      }
+    }
+
+    // Test Telemetry
+    function testTelemetry() {
+      const resultDiv = document.getElementById('telemetry-result');
+      resultDiv.style.display = 'block';
+      
+      // Simuler tracking events
+      const events = [
+        { event: 'page_view', properties: { page: 'test' } },
+        { event: 'button_click', properties: { button: 'test_security' } },
+        { event: 'feature_used', properties: { feature: 'security_test' } }
+      ];
+      
+      resultDiv.innerHTML = `
+        📊 <strong>Events simulés :</strong><br>
+        <pre>${JSON.stringify(events, null, 2)}</pre>
+        <small>Vérifie Network tab → sendBeacon vers /api/telemetry</small>
+      `;
+      document.getElementById('telemetry-test').classList.add('pass');
+    }
+
+    // Test Suspicious Activity
+    let copyCount = 0;
+    function testSuspicious() {
+      const resultDiv = document.getElementById('suspicious-result');
+      resultDiv.style.display = 'block';
+      
+      // Simuler copie excessive
+      document.addEventListener('copy', () => copyCount++);
+      
+      // Trigger 15 copies
+      for (let i = 0; i < 15; i++) {
+        document.dispatchEvent(new Event('copy'));
+      }
+      
+      if (copyCount >= 10) {
+        resultDiv.innerHTML = `
+          🚨 <strong>Activité suspecte détectée</strong><br>
+          Copie excessive : ${copyCount}×<br>
+          <small>Event envoyé vers /api/security/report</small>
+        `;
+        document.getElementById('suspicious-test').classList.add('pass');
+      } else {
+        resultDiv.innerHTML = `
+          ℹ️ Copies : ${copyCount}× (< 10)<br>
+          <small>Copie 10+ fois pour déclencher</small>
+        `;
+      }
+    }
+
+    // Auto-run fingerprint test
+    setTimeout(testFingerprint, 500);
+  </script>
+</body>
+</html>

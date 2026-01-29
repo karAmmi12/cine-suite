@@ -3,6 +3,8 @@
  * Détecte et bloque les tentatives de reverse engineering
  */
 
+import { SECURITY_URL, sendToBackend, devLog } from './config';
+
 export class AntiDebug {
   private static isDebuggerDetected = false;
   private static checksumCache = new Map<string, string>();
@@ -161,11 +163,14 @@ export class AntiDebug {
   }
 
   private static reportSecurityEvent(event: string, data: any) {
-    // Envoie à votre backend (ne pas bloquer l'app)
-    if ('sendBeacon' in navigator) {
-      const payload = JSON.stringify({ event, data, timestamp: Date.now() });
-      navigator.sendBeacon('/api/security/report', payload);
-    }
+    devLog('Security', `Alert: ${event}`, data);
+    
+    sendToBackend(SECURITY_URL, {
+      event,
+      data,
+      timestamp: Date.now(),
+      deviceId: localStorage.getItem('cinesuite_device_id'),
+    });
   }
 
   static isCompromised(): boolean {

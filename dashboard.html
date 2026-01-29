@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>🔐 Security Dashboard - CineSuite</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #00ff88; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }
+    .badge { background: #00ff88; color: #000; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+    .stat-card.critical { border-color: #ff4444; }
+    .stat-card.warning { border-color: #ffaa00; }
+    .stat-card.success { border-color: #00ff88; }
+    .stat-value { font-size: 36px; font-weight: bold; margin: 10px 0; }
+    .stat-label { color: #888; font-size: 14px; }
+    .section { background: #1a1a1a; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+    h2 { color: #00ff88; margin-bottom: 20px; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
+    th { color: #00ff88; font-weight: 600; }
+    td { color: #ccc; }
+    tr:hover { background: #2a2a2a; }
+    .severity { 
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .severity.critical { background: #ff4444; color: #fff; }
+    .severity.high { background: #ff8800; color: #000; }
+    .severity.medium { background: #ffaa00; color: #000; }
+    .severity.low { background: #00ff88; color: #000; }
+    .device-id { font-family: 'Courier New', monospace; font-size: 12px; color: #00ff88; }
+    .timestamp { color: #888; font-size: 12px; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .error { background: #ff4444; color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    button {
+      background: #00ff88;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover { background: #00cc66; }
+    .filters { margin-bottom: 20px; display: flex; gap: 10px; }
+    select {
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      🔐 Security Dashboard
+      <span class="badge" id="live-status">LOADING...</span>
+    </h1>
+
+    <div id="error-container"></div>
+
+    <!-- Stats Cards -->
+    <div class="stats">
+      <div class="stat-card critical">
+        <div class="stat-label">🚨 Critical Alerts</div>
+        <div class="stat-value" id="stat-critical">--</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">⚠️ Total Alerts (7d)</div>
+        <div class="stat-value" id="stat-total">--</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">📊 Total Events (24h)</div>
+        <div class="stat-value" id="stat-events">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🖥️ Unique Devices</div>
+        <div class="stat-value" id="stat-devices">--</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <button onclick="refreshData()">🔄 Refresh</button>
+      <select id="severity-filter" onchange="filterAlerts()">
+        <option value="all">All Severities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select id="timeframe-filter" onchange="refreshData()">
+        <option value="24h">Last 24 hours</option>
+        <option value="7d" selected>Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+      </select>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="section">
+      <h2>🚨 Recent Security Alerts</h2>
+      <div id="alerts-container" class="loading">Loading alerts...</div>
+    </div>
+
+    <!-- Suspicious Devices -->
+    <div class="section">
+      <h2>🔍 Suspicious Devices</h2>
+      <div id="suspicious-container" class="loading">Loading devices...</div>
+    </div>
+
+    <!-- Recent Events -->
+    <div class="section">
+      <h2>📊 Recent Telemetry Events</h2>
+      <div id="events-container" class="loading">Loading events...</div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'VOTRE_SUPABASE_URL'; // À remplacer
+    const SUPABASE_ANON_KEY = 'VOTRE_ANON_KEY'; // À remplacer
+
+    let allAlerts = [];
+
+    async function supabaseQuery(table, select = '*', options = {}) {
+      const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+      url.searchParams.append('select', select);
+      
+      if (options.order) {
+        url.searchParams.append('order', options.order);
+      }
+      if (options.limit) {
+        url.searchParams.append('limit', options.limit);
+      }
+      if (options.filter) {
+        Object.entries(options.filter).forEach(([key, value]) => {
+          url.searchParams.append(key, value);
+        });
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }
+
+    async function loadStats() {
+      try {
+        // Critical alerts (non résolues)
+        const critical = await supabaseQuery('security_alerts', 'count', {
+          filter: { 'severity': 'eq.critical', 'resolved': 'eq.false' }
+        });
+        document.getElementById('stat-critical').textContent = critical.length || 0;
+
+        // Total alerts (7 jours)
+        const alerts = await supabaseQuery('security_alerts', 'count', {
+          filter: { 'created_at': `gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}` }
+        });
+        document.getElementById('stat-total').textContent = alerts.length || 0;
+
+        // Events (24h)
+        const events = await supabaseQuery('telemetry_events', 'count', {
+          filter: { 'created_at': `gte.${new Date(Date.now() - 24*60*60*1000).toISOString()}` }
+        });
+        document.getElementById('stat-events').textContent = events.length || 0;
+
+        // Unique devices
+        const devices = await supabaseQuery('telemetry_events', 'device_id', {
+          filter: { 'created_at': `gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}` }
+        });
+        const uniqueDevices = new Set(devices.map(d => d.device_id)).size;
+        document.getElementById('stat-devices').textContent = uniqueDevices;
+
+      } catch (error) {
+        console.error('Stats error:', error);
+      }
+    }
+
+    async function loadAlerts() {
+      try {
+        allAlerts = await supabaseQuery('security_alerts', '*', {
+          order: 'created_at.desc',
+          limit: 50
+        });
+
+        filterAlerts();
+      } catch (error) {
+        document.getElementById('alerts-container').innerHTML = 
+          `<div class="error">❌ Error loading alerts: ${error.message}</div>`;
+      }
+    }
+
+    function filterAlerts() {
+      const severity = document.getElementById('severity-filter').value;
+      const filtered = severity === 'all' 
+        ? allAlerts 
+        : allAlerts.filter(a => a.severity === severity);
+
+      if (filtered.length === 0) {
+        document.getElementById('alerts-container').innerHTML = 
+          '<p style="color:#888;padding:20px;">No alerts found.</p>';
+        return;
+      }
+
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event</th>
+              <th>Severity</th>
+              <th>Device ID</th>
+              <th>Reason</th>
+              <th>IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(alert => `
+              <tr>
+                <td class="timestamp">${new Date(alert.created_at).toLocaleString()}</td>
+                <td>${alert.event}</td>
+                <td><span class="severity ${alert.severity}">${alert.severity}</span></td>
+                <td class="device-id">${alert.device_id?.substring(0, 16) || 'unknown'}...</td>
+                <td>${alert.reason || '-'}</td>
+                <td>${alert.ip_address || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      document.getElementById('alerts-container').innerHTML = html;
+    }
+
+    async function loadSuspiciousDevices() {
+      try {
+        const suspicious = await supabaseQuery('suspicious_devices', '*', {
+          limit: 10
+        });
+
+        if (suspicious.length === 0) {
+          document.getElementById('suspicious-container').innerHTML = 
+            '<p style="color:#00ff88;padding:20px;">✅ No suspicious devices detected.</p>';
+          return;
+        }
+
+        const html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Device ID</th>
+                <th>Alert Count</th>
+                <th>Last Alert</th>
+                <th>Alert Types</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${suspicious.map(device => `
+                <tr>
+                  <td class="device-id">${device.device_id?.substring(0, 16)}...</td>
+                  <td><strong>${device.alert_count}</strong></td>
+                  <td class="timestamp">${new Date(device.last_alert).toLocaleString()}</td>
+                  <td>${device.alert_types?.join(', ') || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        document.getElementById('suspicious-container').innerHTML = html;
+      } catch (error) {
+        document.getElementById('suspicious-container').innerHTML = 
+          `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    async function loadRecentEvents() {
+      try {
+        const events = await supabaseQuery('telemetry_events', '*', {
+          order: 'created_at.desc',
+          limit: 20
+        });
+
+        const html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Device ID</th>
+                <th>Session ID</th>
+                <th>Properties</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${events.map(event => `
+                <tr>
+                  <td class="timestamp">${new Date(event.created_at).toLocaleString()}</td>
+                  <td>${event.event}</td>
+                  <td class="device-id">${event.device_id?.substring(0, 12)}...</td>
+                  <td class="device-id">${event.session_id?.substring(0, 8)}...</td>
+                  <td>${JSON.stringify(event.properties || {}).substring(0, 50)}...</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        document.getElementById('events-container').innerHTML = html;
+      } catch (error) {
+        document.getElementById('events-container').innerHTML = 
+          `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    async function refreshData() {
+      document.getElementById('live-status').textContent = 'LOADING...';
+      document.getElementById('live-status').style.background = '#ffaa00';
+      
+      try {
+        await Promise.all([
+          loadStats(),
+          loadAlerts(),
+          loadSuspiciousDevices(),
+          loadRecentEvents()
+        ]);
+        
+        document.getElementById('live-status').textContent = 'LIVE';
+        document.getElementById('live-status').style.background = '#00ff88';
+      } catch (error) {
+        document.getElementById('error-container').innerHTML = 
+          `<div class="error">❌ Failed to connect to Supabase. Check your credentials.</div>`;
+        document.getElementById('live-status').textContent = 'ERROR';
+        document.getElementById('live-status').style.background = '#ff4444';
+      }
+    }
+
+    // Initial load
+    refreshData();
+
+    // Auto-refresh toutes les 30s
+    setInterval(refreshData, 30000);
+  </script>
+</body>
+</html>

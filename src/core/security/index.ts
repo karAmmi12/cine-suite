@@ -10,26 +10,34 @@ export { Telemetry } from './telemetry';
 
 // Initialisation centralisée
 export async function initializeSecurity() {
-  if (import.meta.env.DEV) {
-    console.log('🔐 Security module loaded (dev mode)');
+  // Toujours activer en production (import.meta.env.PROD)
+  const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+  
+  if (!isProduction) {
+    console.log('🔓 Security disabled in development');
     return;
   }
 
   try {
-    // 1. Anti-debug & anti-tampering
-    const { AntiDebug } = await import('./antiDebug');
-    AntiDebug.initialize();
-
-    // 2. Telemetry
-    const { Telemetry } = await import('./telemetry');
-    await Telemetry.initialize();
-
-    // 3. Device fingerprint
+    console.log('🔐 Initializing security...');
+    
+    // 1. Device fingerprint (priorité - doit être immédiat)
     const { DeviceFingerprint } = await import('./fingerprint');
     const deviceId = await DeviceFingerprint.generate();
+    console.log('✅ Device ID:', deviceId.substring(0, 16) + '...');
+
+    // 2. Anti-debug & anti-tampering
+    const { AntiDebug } = await import('./antiDebug');
+    AntiDebug.initialize();
+    console.log('✅ Anti-debug initialized');
+
+    // 3. Telemetry
+    const { Telemetry } = await import('./telemetry');
+    await Telemetry.initialize();
+    console.log('✅ Telemetry initialized');
     
-    console.log('🔐 Security initialized:', deviceId.substring(0, 8) + '...');
+    console.log('🔐 Security fully initialized');
   } catch (error) {
-    console.error('Security initialization failed:', error);
+    console.error('❌ Security initialization failed:', error);
   }
 }

@@ -4,6 +4,7 @@
  */
 
 import { DeviceFingerprint } from './fingerprint';
+import { TELEMETRY_URL, sendToBackend, devLog } from './config';
 
 interface TelemetryEvent {
   event: string;
@@ -39,7 +40,7 @@ export class Telemetry {
     setInterval(() => this.flush(), 30000); // Toutes les 30s
 
     // Flush avant fermeture
-    window.addEventListener('beforeunload', () => this.flush(true));
+    window.addEventListener('beforeunload', () => this.flush());
 
     // Track les events suspects
     this.setupSuspiciousActivityDetection();
@@ -73,27 +74,18 @@ export class Telemetry {
     }
   }
 
-  private static async flush(sync = false) {
+  private static async flush() {
     if (this.eventQueue.length === 0) return;
 
     const events = [...this.eventQueue];
     this.eventQueue = [];
 
-    try {
-      if (sync && 'sendBeacon' in navigator) {
-        // Utilise sendBeacon pour garantir l'envoi même si page se ferme
-        const payload = JSON.stringify({ events });
-        navigator.sendBeacon('/api/telemetry', payload);
-      } else {
-        // Fetch normal
-        await fetch('/api/telemetry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ events })
-        });
-      }
-    } catch (error) {
-      // Remet les events dans la queue en cas d'échec
+    devLog('Telemetry', `Flushing ${events.length} events`, events);
+
+    const success = await sendToBackend(TELEMETRY_URL, { events });
+    
+    if (!success) {
+      // Remet dans la queue si échec
       this.eventQueue.unshift(...events);
     }
   }

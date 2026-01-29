@@ -75,6 +75,13 @@ export class DeviceFingerprint {
   private static async getAudioFingerprint(): Promise<string> {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Chrome bloque AudioContext sans interaction utilisateur
+      if (audioContext.state === 'suspended') {
+        await audioContext.close();
+        return 'audio_suspended';
+      }
+      
       const oscillator = audioContext.createOscillator();
       const analyser = audioContext.createAnalyser();
       const gainNode = audioContext.createGain();
@@ -89,16 +96,40 @@ export class DeviceFingerprint {
       oscillator.start(0);
 
       return new Promise((resolve) => {
+        let completed = false;
+        
+        // Timeout si pas de réponse en 100ms
+        setTimeout(() => {
+          if (!completed) {
+            completed = true;
+            try {
+              oscillator.stop();
+              scriptProcessor.disconnect();
+              audioContext.close();
+            } catch {}
+            resolve('audio_timeout');
+          }
+        }, 100);
+        
         scriptProcessor.onaudioprocess = (event) => {
+          if (completed) return;
+          completed = true;
+          
           const output = event.inputBuffer.getChannelData(0);
           const sum = output.reduce((a, b) => a + Math.abs(b), 0);
-          oscillator.stop();
-          scriptProcessor.disconnect();
+          
+          try {
+            oscillator.stop();
+            scriptProcessor.disconnect();
+            audioContext.close();
+          } catch {}
+          
           resolve(sum.toString().slice(0, 20));
         };
       });
-    } catch {
-      return '';
+    } catch (error) {
+      console.warn('Audio fingerprint skipped:', error);
+      return 'audio_error';
     }
   }
 
