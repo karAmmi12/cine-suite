@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SceneDefinition } from '../types/schema';
+import { Encryption } from '../security/encryption';
 
 export interface Project {
   id: string;
@@ -255,7 +256,38 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'cinesuite-projects',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: async (name) => {
+          const item = localStorage.getItem(name);
+          if (!item) return null;
+          
+          // Déchiffre les données en production
+          if (import.meta.env.PROD) {
+            try {
+              return await Encryption.decrypt(item);
+            } catch {
+              return item; // Fallback si déchiffrement échoue
+            }
+          }
+          return item;
+        },
+        setItem: async (name, value) => {
+          // Chiffre les données en production
+          if (import.meta.env.PROD) {
+            try {
+              const encrypted = await Encryption.encrypt(value);
+              localStorage.setItem(name, encrypted);
+              return;
+            } catch {
+              // Fallback si chiffrement échoue
+            }
+          }
+          localStorage.setItem(name, value);
+        },
+        removeItem: async (name) => {
+          localStorage.removeItem(name);
+        }
+      })),
     }
   )
 );
