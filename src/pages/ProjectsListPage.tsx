@@ -2,10 +2,15 @@ import { useState } from 'react';
 import { Plus, Film, Trash, Edit2, FolderOpen, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../core/store/projectStore';
+import type { Project } from '../core/store/projectStore';
+import { useProjectSync } from '../core/hooks/useProjectSync';
+
+const inputCls = 'w-full bg-[#1c1f26] border border-[rgba(180,151,94,0.25)] rounded-lg px-4 py-3 text-sm text-[#ebe7df] placeholder-[#4a4840] outline-none focus:border-[#d1b374] transition-colors';
 
 export const ProjectsListPage = () => {
   const navigate = useNavigate();
-  const { projects, createProject, deleteProject, updateProject } = useProjectStore();
+  const { createProject, deleteProject, updateProject } = useProjectStore();
+  const { projects } = useProjectSync();
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -14,8 +19,11 @@ export const ProjectsListPage = () => {
 
   const handleCreate = () => {
     if (!newProjectName.trim()) return;
-    
-    const project = createProject(newProjectName.trim(), newProjectDesc.trim() || undefined);
+    const project = createProject({
+      name: newProjectName.trim(),
+      description: newProjectDesc.trim() || undefined,
+      scenes: []
+    });
     setIsCreating(false);
     setNewProjectName('');
     setNewProjectDesc('');
@@ -24,224 +32,191 @@ export const ProjectsListPage = () => {
 
   const handleDelete = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (projects.length === 1) {
-      alert('❌ Impossible de supprimer le dernier projet');
-      return;
-    }
-    if (confirm('Supprimer ce projet et toutes ses scènes ?')) {
-      deleteProject(projectId);
-    }
+    if (projects.length === 1) { alert('Impossible de supprimer le dernier projet.'); return; }
+    if (confirm('Supprimer ce projet et toutes ses scènes ?')) deleteProject(projectId);
   };
 
   const handleRename = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(projectId);
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find((p: Project) => p.id === projectId);
     setEditName(project?.name || '');
   };
 
   const saveRename = (projectId: string) => {
-    if (editName.trim()) {
-      updateProject(projectId, { name: editName.trim() });
-    }
+    if (editName.trim()) updateProject(projectId, { name: editName.trim() });
     setEditingId(null);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const totalScenes = projects.reduce((sum: number, p: Project) => sum + p.scenes.length, 0);
+  const recentCount = projects.filter((p: Project) => {
+    const days = (Date.now() - new Date(p.updatedAt).getTime()) / 86_400_000;
+    return days <= 7;
+  }).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-neutral-950 to-black text-gray-100">
-      {/* Header */}
-      <header className="border-b border-amber-900/20 bg-black/40 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-serif tracking-wide text-amber-500 mb-1 flex items-center gap-3">
-                <Film className="text-amber-400" size={40} />
-                CineSuite
-              </h1>
-              <p className="text-gray-500 text-sm tracking-widest uppercase">Production Dashboard</p>
-            </div>
-            <button
-              onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-3 rounded font-semibold hover:from-amber-700 hover:to-amber-800 transition-all shadow-lg shadow-amber-900/50 text-black"
-            >
-              <Plus size={20} />
-              Nouveau Projet
-            </button>
+    <div className="min-h-screen text-[#ebe7df] pb-24">
+
+      {/* ─── Header ─── */}
+      <header className="border-b border-[rgba(180,151,94,0.18)] bg-[#0d0f12]/80 backdrop-blur-xl sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-serif tracking-wide text-[#d1b374] flex items-center gap-3">
+              <Film size={24} className="text-[#b4975e]" />
+              CineSuite
+            </h1>
+            <p className="text-[#5a5862] text-[10px] tracking-widest uppercase mt-0.5">Production Dashboard</p>
           </div>
+          <button
+            onClick={() => setIsCreating(true)}
+            className="flex items-center gap-2 cine-button-primary px-5 py-2.5 rounded-lg text-sm font-semibold"
+          >
+            <Plus size={16} /> Nouveau projet
+          </button>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 mb-12">
-          <div className="bg-neutral-900/50 border border-amber-900/20 rounded-lg p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <FolderOpen className="text-amber-500" size={20} />
-              <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Projets</span>
-            </div>
-            <div className="text-3xl font-bold text-amber-400">{projects.length}</div>
-          </div>
-          
-          <div className="bg-neutral-900/50 border border-amber-900/20 rounded-lg p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <Film className="text-amber-500" size={20} />
-              <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Scènes</span>
-            </div>
-            <div className="text-3xl font-bold text-amber-400">
-              {projects.reduce((sum, p) => sum + p.scenes.length, 0)}
-            </div>
-          </div>
-          
-          <div className="bg-neutral-900/50 border border-amber-900/20 rounded-lg p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <Clock className="text-amber-500" size={20} />
-              <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Récents</span>
-            </div>
-            <div className="text-3xl font-bold text-amber-400">
-              {projects.filter(p => {
-                const daysSince = (Date.now() - new Date(p.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-                return daysSince <= 7;
-              }).length}
-            </div>
-          </div>
-        </div>
+      <main className="max-w-6xl mx-auto px-6 py-10">
 
-        {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              onClick={() => navigate(`/project/${project.id}`)}
-              className="bg-neutral-900/40 border border-amber-900/20 rounded-lg overflow-hidden hover:border-amber-700/40 transition-all cursor-pointer group hover:shadow-xl hover:shadow-amber-950/50"
-            >
-              {/* Thumbnail */}
-              <div className="w-full h-40 bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center border-b border-amber-900/20 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(251,191,36,0.05),transparent)]" />
-                <Film size={64} className="text-amber-900/30 relative z-10" />
+        {/* ─── Stats ─── */}
+        <div className="grid grid-cols-3 gap-4 mb-10">
+          {[
+            { icon: FolderOpen, label: 'Projets',  value: projects.length },
+            { icon: Film,       label: 'Scènes',   value: totalScenes },
+            { icon: Clock,      label: 'Récents',  value: recentCount },
+          ].map(({ icon: Icon, label, value }) => (
+            <div key={label} className="bg-[#14161b] border border-[rgba(180,151,94,0.12)] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon size={15} className="text-[#b4975e]" />
+                <span className="text-[10px] font-semibold text-[#5a5862] uppercase tracking-widest">{label}</span>
               </div>
-
-              <div className="p-6">
-                {/* Title */}
-                {editingId === project.id ? (
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onBlur={() => saveRename(project.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && saveRename(project.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    autoFocus
-                    className="w-full bg-neutral-800 border border-amber-700/40 rounded px-3 py-2 font-semibold text-lg mb-3 outline-none focus:border-amber-600"
-                  />
-                ) : (
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-1 text-gray-100">{project.name}</h3>
-                )}
-
-                {/* Description */}
-                <p className="text-gray-500 text-sm mb-4 line-clamp-2 min-h-[40px]">
-                  {project.description || 'Aucune description'}
-                </p>
-
-                {/* Meta */}
-                <div className="flex items-center justify-between text-xs text-gray-600 mb-4 pb-4 border-b border-amber-900/20">
-                  <span>{project.scenes.length} scène{project.scenes.length > 1 ? 's' : ''}</span>
-                  <span>{formatDate(project.updatedAt)}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => handleRename(project.id, e)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-amber-900/20 py-2 rounded text-sm transition-colors"
-                  >
-                    <Edit2 size={14} />
-                    Renommer
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(project.id, e)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-red-950/50 hover:bg-red-950/70 border border-red-900/30 py-2 rounded text-sm transition-colors text-red-400"
-                  >
-                    <Trash size={14} />
-                    Supprimer
-                  </button>
-                </div>
-              </div>
+              <div className="text-3xl font-bold text-[#d1b374]">{value}</div>
             </div>
           ))}
         </div>
 
-        {/* Empty State */}
-        {projects.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-neutral-900/50 border border-amber-900/20 flex items-center justify-center">
-              <Film size={48} className="text-amber-900/50" />
+        {/* ─── Projects grid ─── */}
+        {projects.length === 0 ? (
+          <div className="text-center py-24">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-[#14161b] border border-[rgba(180,151,94,0.15)] flex items-center justify-center">
+              <Film size={36} className="text-[#3a3830]" />
             </div>
-            <h3 className="text-2xl font-semibold mb-2 text-gray-300">Aucun projet</h3>
-            <p className="text-gray-600 mb-6">Créez votre premier projet pour commencer</p>
-            <button
-              onClick={() => setIsCreating(true)}
-              className="bg-gradient-to-r from-amber-600 to-amber-700 px-8 py-3 rounded font-semibold hover:from-amber-700 hover:to-amber-800 transition-all text-black shadow-lg shadow-amber-900/50"
-            >
+            <h3 className="text-lg font-semibold text-[#a9a49b] mb-2">Aucun projet</h3>
+            <p className="text-[#5a5862] text-sm mb-6">Créez votre premier projet pour commencer</p>
+            <button onClick={() => setIsCreating(true)} className="cine-button-primary px-7 py-2.5 rounded-lg text-sm font-semibold">
               Créer un projet
             </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {projects.map((project: Project) => (
+              <div
+                key={project.id}
+                onClick={() => navigate(`/project/${project.id}`)}
+                className="bg-[#14161b] border border-[rgba(180,151,94,0.12)] rounded-xl overflow-hidden hover:border-[rgba(180,151,94,0.35)] transition-all cursor-pointer group hover:shadow-xl hover:shadow-black/40"
+              >
+                {/* Thumbnail */}
+                <div className="w-full h-36 bg-[#0d0f12] flex items-center justify-center relative overflow-hidden border-b border-[rgba(180,151,94,0.1)]">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_110%,rgba(180,151,94,0.06),transparent)]" />
+                  <Film size={52} className="text-[#2a2820]" />
+                </div>
+
+                <div className="p-5">
+                  {/* Title */}
+                  {editingId === project.id ? (
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onBlur={() => saveRename(project.id)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveRename(project.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                      className="w-full bg-[#1c1f26] border border-[rgba(180,151,94,0.3)] rounded px-3 py-1.5 font-semibold text-sm mb-3 outline-none focus:border-[#d1b374] text-[#ebe7df]"
+                    />
+                  ) : (
+                    <h3 className="font-semibold text-[#ebe7df] mb-1.5 line-clamp-1">{project.name}</h3>
+                  )}
+
+                  <p className="text-[#5a5862] text-xs mb-4 line-clamp-2 min-h-[32px]">
+                    {project.description || 'Aucune description'}
+                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] text-[#3a3830] mb-4 pb-4 border-b border-[rgba(180,151,94,0.08)]">
+                    <span>{project.scenes.length} scène{project.scenes.length !== 1 ? 's' : ''}</span>
+                    <span>{formatDate(project.updatedAt)}</span>
+                  </div>
+
+                  {/* Actions — visible on hover */}
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleRename(project.id, e)}
+                      className="flex-1 flex items-center justify-center gap-1.5 cine-button-muted py-2 rounded-lg text-xs font-medium"
+                    >
+                      <Edit2 size={12} /> Renommer
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(project.id, e)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[#dc6f6f] bg-red-950/20 hover:bg-red-950/40 border border-red-900/20 transition-colors"
+                    >
+                      <Trash size={12} /> Supprimer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>
 
-      {/* Modal Création */}
+      {/* ─── Modal création ─── */}
       {isCreating && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-amber-900/30 rounded-lg max-w-md w-full p-8 shadow-2xl shadow-black/50">
-            <h2 className="text-2xl font-semibold mb-6 text-amber-500">Nouveau Projet</h2>
-            
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#14161b] border border-[rgba(180,151,94,0.2)] rounded-2xl max-w-md w-full p-7 shadow-2xl">
+            <h2 className="text-xl font-serif text-[#d1b374] mb-6">Nouveau projet</h2>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-400">Nom du projet *</label>
+                <label className="block text-[10px] font-semibold text-[#a9a49b] uppercase tracking-wider mb-1.5">
+                  Nom *
+                </label>
                 <input
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="Ex: Court métrage Zombies"
-                  className="w-full bg-neutral-800 border border-amber-900/30 rounded px-4 py-3 outline-none focus:border-amber-600 transition-colors text-gray-100"
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                  placeholder="Ex : Court métrage Zombies"
+                  className={inputCls}
                   autoFocus
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-400">Description (optionnel)</label>
+                <label className="block text-[10px] font-semibold text-[#a9a49b] uppercase tracking-wider mb-1.5">
+                  Description (optionnel)
+                </label>
                 <textarea
                   value={newProjectDesc}
                   onChange={(e) => setNewProjectDesc(e.target.value)}
-                  placeholder="Ex: Histoire d'une apocalypse zombie en milieu urbain"
-                  className="w-full bg-neutral-800 border border-amber-900/30 rounded px-4 py-3 outline-none focus:border-amber-600 transition-colors resize-none text-gray-100"
+                  placeholder="Ex : Apocalypse zombie en milieu urbain"
                   rows={3}
+                  className={`${inputCls} resize-none`}
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-7">
               <button
-                onClick={() => {
-                  setIsCreating(false);
-                  setNewProjectName('');
-                  setNewProjectDesc('');
-                }}
-                className="flex-1 bg-neutral-800 hover:bg-neutral-700 py-3 rounded font-medium transition-colors border border-amber-900/20"
+                onClick={() => { setIsCreating(false); setNewProjectName(''); setNewProjectDesc(''); }}
+                className="flex-1 cine-button-muted py-2.5 rounded-lg text-sm font-medium"
               >
                 Annuler
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!newProjectName.trim()}
-                className="flex-1 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 py-3 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all text-black shadow-lg shadow-amber-900/50"
+                className="flex-1 cine-button-primary py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Créer
               </button>

@@ -1,86 +1,38 @@
-import { useRef, useState } from 'react';
-import { Plus, Trash, Play, Download, Upload, ArrowRightLeft, MessageSquare, Sparkles, Loader2, Key } from 'lucide-react';
-
-// Imports internes
-import { useProjectStore } from '../../../core/store/projectStore';
+import { useState } from 'react';
+import { Plus, Trash, ArrowRightLeft, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
+import { useEditorActions } from '../../../core/hooks/useEditorActions';
 import type { ChatModuleConfig, ChatMessage } from '../../../core/types/schema';
-import { downloadSceneConfig, readJsonFile } from '../../../core/utils/fileHandler';
 import { ImagePicker } from '../../../ui/atoms/ImagePicker';
 import { generateChatConfig } from '../../../core/services/configGeneratorService';
+import { EditorShell } from '../../../ui/layout/EditorShell';
+
+const inputCls = 'w-full bg-[#1c1f26] border border-[rgba(180,151,94,0.25)] rounded-lg px-3 py-2 text-sm text-[#ebe7df] placeholder-[#4a4840] outline-none focus:border-[#d1b374] transition-colors';
+const labelCls = 'block text-[10px] font-semibold text-[#a9a49b] uppercase tracking-wider mb-1.5';
+const sectionCls = 'bg-[#14161b] border border-[rgba(180,151,94,0.12)] rounded-xl p-5 space-y-5';
+const sectionTitleCls = 'text-[10px] font-semibold text-[#d1b374] uppercase tracking-widest border-b border-[rgba(180,151,94,0.15)] pb-2 mb-4';
 
 export const ChatEditor = () => {
-  const currentScene = useProjectStore((state) => state.getCurrentScene());
-  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
-  const currentProjectId = useProjectStore((state) => state.currentProjectId);
-  const currentSceneId = useProjectStore((state) => state.currentSceneId);
-  
-  // Accès aux réglages globaux pour la clé API
-  const globalSettings = currentScene?.globalSettings;
-  const updateGlobalSettings = (settings: any) => updateCurrentScene({ globalSettings: settings });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { currentScene, updateCurrentScene, globalSettings } = useEditorActions();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Sécurité
-  if (!currentScene || currentScene.module.type !== 'chat') {
-    return <div className="p-8 text-red-500">Erreur : Aucune scène de Chat active.</div>;
-  }
-
+  if (!currentScene || currentScene.module.type !== 'chat') return null;
   const config = currentScene.module as ChatModuleConfig;
 
-  // --- LOGIQUE IA PROFESSIONNELLE ---
-  const handleAiGeneration = async () => {
-    if (!globalSettings?.aiKey) {
-        alert("⚠️ Veuillez entrer une clé API Groq en haut à droite.");
-        return;
-    }
-    
-    const context = prompt("💬 Contexte de la conversation ? (ex: Dispute de couple, Planification de braquage, Discussion entre amis...)");
-    if (!context) return;
-
-    setIsGenerating(true);
-    try {
-      // Utilisation du SERVICE IA PROFESSIONNEL
-      const generatedConfig = await generateChatConfig(
-        context, 
-        { apiKey: globalSettings.aiKey, context: `Contact: ${config.contactName}` }
-      );
-      
-      // On applique TOUTE la configuration générée
-      updateCurrentScene({ 
-        module: { 
-          ...config,
-          contactName: generatedConfig.contactName,
-          messagesHistory: generatedConfig.messagesHistory 
-        } 
-      });
-      
-      alert(`✅ ${generatedConfig.messagesHistory.length} messages générés par l'IA professionnelle !`);
-    } catch (e: any) {
-      alert("❌ Erreur IA: " + (e.message || e));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // --- LOGIQUE DE MISE À JOUR ---
   const updateConfig = (key: keyof ChatModuleConfig, value: any) => {
     updateCurrentScene({ module: { ...config, [key]: value } });
   };
 
   const updateMessage = (id: string, field: keyof ChatMessage, value: any) => {
-    const newHistory = config.messagesHistory.map(m => 
-      m.id === id ? { ...m, [field]: value } : m
-    );
-    updateConfig('messagesHistory', newHistory);
+    const history = config.messagesHistory.map(m => m.id === id ? { ...m, [field]: value } : m);
+    updateConfig('messagesHistory', history);
   };
 
   const addMessage = () => {
     const newMsg: ChatMessage = {
       id: Date.now().toString(),
-      isMe: false, 
-      text: "Nouveau message...",
-      time: "12:00",
+      isMe: false,
+      text: 'Nouveau message...',
+      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       status: 'read'
     };
     updateConfig('messagesHistory', [...config.messagesHistory, newMsg]);
@@ -95,160 +47,152 @@ export const ChatEditor = () => {
     if (msg) updateMessage(id, 'isMe', !msg.isMe);
   };
 
-  // --- IMPORT / EXPORT ---
-  const handleExport = () => downloadSceneConfig(currentScene);
-  const handleImportClick = () => fileInputRef.current?.click();
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      await readJsonFile(file);
-      // TODO: Implémenter loadScene dans projectStore
-      alert("Import de scène temporairement désactivé (refactoring en cours)");
+  const handleAiGeneration = async () => {
+    if (!globalSettings?.aiKey) { alert('Clé API Groq manquante — cliquez sur 🔑 en haut.'); return; }
+    const context = prompt("Contexte de la conversation ?\n(ex: Dispute de couple, Planification d'une mission, Discussion entre amis...)");
+    if (!context) return;
+
+    setIsGenerating(true);
+    try {
+      const generated = await generateChatConfig(context, {
+        apiKey: globalSettings.aiKey,
+        context: `Contact: ${config.contactName}`
+      });
+      updateCurrentScene({
+        module: { ...config, contactName: generated.contactName, messagesHistory: generated.messagesHistory }
+      });
+    } catch (e: any) {
+      alert('Erreur IA : ' + (e.message || e));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="h-screen overflow-y-auto bg-gray-50 text-gray-900 p-8 font-sans">
-      <div className="max-w-3xl mx-auto pb-32">
-        
-        {/* === HEADER === */}
-        <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-4 z-20">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">CineSuite Studio</h1>
-            <p className="text-xs text-green-600 uppercase tracking-wider font-bold">Éditeur de Chat</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            
-            {/* Input Clé API */}
-            <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 border border-gray-200 mr-2 h-9">
-                <Key size={14} className="text-gray-400"/>
-                <input 
-                    type="password" 
-                    placeholder="Clé API Groq..."
-                    value={globalSettings?.aiKey || ''}
-                    onChange={(e) => updateGlobalSettings({ ...globalSettings, aiKey: e.target.value })}
-                    className="bg-transparent border-none outline-none text-xs w-24 focus:w-48 transition-all"
+    <EditorShell>
+      <div className="max-w-2xl mx-auto px-5 py-6 space-y-6 pb-24">
+
+        {/* ─── Contact ─── */}
+        <section className={sectionCls}>
+          <h2 className={sectionTitleCls}>Contact</h2>
+
+          <div className="flex gap-6">
+            <div className="shrink-0">
+              <label className={labelCls}>Avatar</label>
+              <ImagePicker
+                label=""
+                value={config.contactAvatar}
+                onChange={(val) => updateConfig('contactAvatar', val)}
+              />
+            </div>
+            <div className="flex-1 space-y-4">
+              <div>
+                <label className={labelCls}>Nom du contact</label>
+                <input
+                  value={config.contactName}
+                  onChange={(e) => updateConfig('contactName', e.target.value)}
+                  className={inputCls}
+                  placeholder="ex: Maman, Inconnu, Agent K..."
                 />
-            </div>
-
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-            
-            <button onClick={handleImportClick} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><Upload size={18}/></button>
-            <button onClick={handleExport} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><Download size={18}/></button>
-            
-            <div className="w-px h-8 bg-gray-300 mx-2"></div>
-            
-            <button 
-                onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=400,height=800')}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-md shadow-green-200 font-bold text-sm transition-all"
-            >
-              <Play size={16} /> LANCER
-            </button>
-          </div>
-        </div>
-
-        {/* === CONFIGURATION CONTACT === */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <div className="flex flex-col sm:flex-row gap-8">
-             <div className="w-full sm:w-auto flex justify-center sm:block">
-                <ImagePicker 
-                    label="Avatar Contact"
-                    value={config.contactAvatar}
-                    onChange={(val) => updateConfig('contactAvatar', val)}
+              </div>
+              <div>
+                <label className={labelCls}>Message à taper — Magic Typing</label>
+                <input
+                  value={config.triggerText}
+                  onChange={(e) => updateConfig('triggerText', e.target.value)}
+                  className={`${inputCls} font-mono`}
+                  placeholder="Ce que l'acteur va « taper »..."
                 />
-             </div>
-             <div className="flex-1 grid grid-cols-1 gap-4">
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nom du Contact</label>
-                    <input 
-                        value={config.contactName}
-                        onChange={(e) => updateConfig('contactName', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-2.5 font-bold text-lg outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Message à taper (Magic Typing)</label>
-                    <input 
-                        value={config.triggerText}
-                        onChange={(e) => updateConfig('triggerText', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-2.5 bg-green-50 text-green-900 font-mono text-sm outline-none"
-                    />
-                </div>
-             </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* === HISTORIQUE DES MESSAGES === */}
-        <div className="space-y-6">
-            <div className="flex justify-between items-center px-1">
-                <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <MessageSquare size={16} /> Historique ({config.messagesHistory.length})
-                </h2>
-                
-                <div className="flex gap-2">
-                    {/* BOUTON IA */}
-                    <button 
-                        onClick={handleAiGeneration} 
-                        disabled={isGenerating}
-                        className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 text-sm font-bold px-3 py-1.5 rounded-lg transition-all shadow-md shadow-purple-200 disabled:opacity-70"
-                    >
-                    {isGenerating ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16} />} 
-                    {isGenerating ? '...' : 'Générer IA'}
-                    </button>
+        {/* ─── Historique ─── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold text-[#a9a49b] uppercase tracking-wider flex items-center gap-1.5">
+              <MessageSquare size={13} /> Historique ({config.messagesHistory.length})
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAiGeneration}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              >
+                {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {isGenerating ? 'Génération...' : 'Générer IA'}
+              </button>
+              <button
+                onClick={addMessage}
+                className="flex items-center gap-1.5 cine-button-muted text-xs font-medium px-3 py-1.5 rounded-lg"
+              >
+                <Plus size={13} /> Ajouter
+              </button>
+            </div>
+          </div>
 
-                    <button onClick={addMessage} className="flex items-center gap-1 bg-green-50 text-green-600 hover:bg-green-100 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors">
-                        <Plus size={16}/> Ajouter
-                    </button>
+          {config.messagesHistory.length === 0 && (
+            <div className="text-center py-10 border border-dashed border-[rgba(180,151,94,0.2)] rounded-xl text-[#4a4840] text-sm">
+              Aucun message. Cliquez sur « Ajouter » ou « Générer IA ».
+            </div>
+          )}
+
+          <div className="space-y-2.5">
+            {config.messagesHistory.map((msg) => (
+              <div
+                key={msg.id}
+                className={`relative flex items-start gap-3 p-4 rounded-xl border transition-colors ${
+                  msg.isMe
+                    ? 'bg-[#16202b] border-blue-500/20 ml-8'
+                    : 'bg-[#14161b] border-[rgba(180,151,94,0.12)] mr-8'
+                }`}
+              >
+                {/* Sender badge */}
+                <span className={`absolute -top-2.5 left-3 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                  msg.isMe
+                    ? 'bg-blue-950 text-blue-300 border-blue-800'
+                    : 'bg-[#1c1f26] text-[#a9a49b] border-[rgba(180,151,94,0.2)]'
+                }`}>
+                  {msg.isMe ? 'Moi' : config.contactName}
+                </span>
+
+                {/* Toggle sender */}
+                <button
+                  onClick={() => toggleSender(msg.id)}
+                  title="Changer l'expéditeur"
+                  className="mt-1 p-1.5 rounded-full bg-[#1c1f26] border border-[rgba(180,151,94,0.2)] text-[#5a5862] hover:text-[#d1b374] transition-colors shrink-0"
+                >
+                  <ArrowRightLeft size={12} />
+                </button>
+
+                <div className="flex-1 space-y-2 pt-0.5">
+                  <textarea
+                    value={msg.text}
+                    onChange={(e) => updateMessage(msg.id, 'text', e.target.value)}
+                    rows={2}
+                    className="w-full bg-transparent resize-none outline-none text-[#ebe7df] text-sm leading-relaxed placeholder-[#3a3830]"
+                  />
+                  <div className="flex justify-end pt-1.5 border-t border-[rgba(255,255,255,0.04)]">
+                    <input
+                      value={msg.time}
+                      onChange={(e) => updateMessage(msg.id, 'time', e.target.value)}
+                      className="w-14 text-right text-[10px] text-[#5a5862] bg-transparent outline-none"
+                    />
+                  </div>
                 </div>
-            </div>
 
-            <div className="space-y-3">
-                {config.messagesHistory.map((msg) => (
-                    <div 
-                        key={msg.id} 
-                        className={`relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 group
-                            ${msg.isMe 
-                                ? 'bg-blue-50 border-blue-100 ml-12 rounded-br-none' 
-                                : 'bg-white border-gray-200 mr-12 rounded-bl-none shadow-sm'
-                            }`}
-                    >
-                        <div className={`absolute -top-3 left-4 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border
-                            ${msg.isMe ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            {msg.isMe ? 'Moi' : config.contactName}
-                        </div>
-
-                        <button 
-                            onClick={() => toggleSender(msg.id)}
-                            className="mt-2 p-1.5 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-blue-500 shadow-sm"
-                        >
-                            <ArrowRightLeft size={14} />
-                        </button>
-
-                        <div className="flex-1 space-y-2 pt-1">
-                            <textarea 
-                                value={msg.text}
-                                onChange={(e) => updateMessage(msg.id, 'text', e.target.value)}
-                                className="w-full bg-transparent resize-none outline-none text-gray-800 leading-relaxed font-medium"
-                                rows={2}
-                            />
-                            <div className="flex justify-end items-center gap-2 pt-2 border-t border-black/5">
-                                <input 
-                                    value={msg.time}
-                                    onChange={(e) => updateMessage(msg.id, 'time', e.target.value)}
-                                    className="w-16 text-right text-xs bg-white/50 rounded px-1 outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <button onClick={() => removeMessage(msg.id)} className="text-gray-300 hover:text-red-500 p-2">
-                            <Trash size={16} />
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-
+                <button
+                  onClick={() => removeMessage(msg.id)}
+                  className="text-[#3a3830] hover:text-[#dc6f6f] p-1 mt-1 transition-colors shrink-0"
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
-    </div>
+    </EditorShell>
   );
 };

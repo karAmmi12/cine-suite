@@ -4,14 +4,20 @@ import { useProjectStore } from '../../core/store/projectStore';
 import type { ChatModuleConfig, ChatMessage } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 
-export const ChatModule = () => {
-  const scene = useProjectStore((state) => state.getCurrentScene());
-  const config = scene?.module as ChatModuleConfig;
+interface Props {
+  config?: ChatModuleConfig;
+  typingText?: string;
+}
 
+export const ChatModule = ({ config: propsConfig, typingText }: Props = {}) => {
+  const scene = useProjectStore((state: any) => state.getCurrentScene());
+  const config = propsConfig || (scene?.module as ChatModuleConfig);
+
+  const trigger = typingText || config?.triggerText || '';
   const [messages, setMessages] = useState<ChatMessage[]>(config?.messagesHistory || []);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   
-  const { displayValue, isComplete } = useMagicTyping(config?.triggerText || "");
+  const { displayValue, isComplete } = useMagicTyping(trigger);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +35,7 @@ export const ChatModule = () => {
       const newMessage: ChatMessage = {
         id: Date.now().toString(),
         isMe: true,
-        text: config.triggerText,
+        text: trigger,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         status: 'sent'
       };
@@ -61,7 +67,7 @@ export const ChatModule = () => {
     };
     window.addEventListener('keydown', handleEnter);
     return () => window.removeEventListener('keydown', handleEnter);
-  }, [isComplete, config.triggerText]);
+  }, [isComplete, trigger]);
 
   useEffect(() => {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;

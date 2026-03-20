@@ -1,134 +1,16 @@
 import type { SearchResult } from "../../../core/types/schema";
 import { ArrowLeft, X, Calendar, User, Clock, Eye, MessageCircle, Tag } from 'lucide-react';
+import { getSearchTheme, type SearchTheme } from '../searchThemes';
 
 interface WebPageViewerProps {
   result: SearchResult;
-  theme: 'modern' | 'retro-2000' | 'retro-90' | 'yahoo-2005' | 'altavista-98' | 'windows-98' | 'hacker-terminal';
+  theme: SearchTheme;
   onBack: () => void;
 }
 
 export const WebPageViewer = ({ result, theme, onBack }: WebPageViewerProps) => {
   
-  // Configuration par thème
-  const getThemeConfig = (): {
-    bg: string;
-    header: string;
-    headerText: string;
-    button: string;
-    title: string;
-    date: string;
-    body: string;
-    container: string;
-    font: string;
-  } => {
-    switch(theme) {
-      case 'modern':
-        return {
-          bg: 'bg-white',
-          header: 'bg-white border-gray-200 shadow-sm',
-          headerText: 'text-gray-500',
-          button: 'text-gray-600 hover:bg-gray-100 px-3 py-1 rounded-full',
-          title: 'text-3xl font-bold text-gray-900',
-          date: 'text-gray-500 text-sm',
-          body: 'text-gray-800 prose-slate',
-          container: 'bg-white',
-          font: 'font-sans'
-        };
-      
-      case 'yahoo-2005':
-        return {
-          bg: 'bg-purple-50',
-          header: 'bg-purple-700 text-white border-b-4 border-purple-900',
-          headerText: 'text-purple-100',
-          button: 'bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-500 font-bold',
-          title: 'text-2xl font-black text-purple-900 uppercase',
-          date: 'text-purple-700 text-xs font-bold',
-          body: 'text-gray-900 leading-relaxed',
-          container: 'bg-white border-4 border-purple-300 p-6',
-          font: 'font-sans'
-        };
-      
-      case 'retro-2000':
-        return {
-          bg: 'bg-blue-50',
-          header: 'bg-blue-700 text-white border-b-2 border-blue-900',
-          headerText: 'text-blue-100',
-          button: 'bg-blue-600 text-white px-3 py-1 hover:bg-blue-500 font-semibold',
-          title: 'text-2xl font-bold text-blue-900',
-          date: 'text-blue-600 text-sm',
-          body: 'text-gray-900',
-          container: 'bg-white border border-blue-300 p-6',
-          font: 'font-sans'
-        };
-      
-      case 'altavista-98':
-        return {
-          bg: 'bg-[#ffffcc]',
-          header: 'bg-[#ffff99] border-b-2 border-black',
-          headerText: 'text-black font-mono',
-          button: 'bg-yellow-300 text-black px-2 py-1 border-2 border-black font-bold',
-          title: 'text-3xl font-black text-[#0000ee] underline',
-          date: 'text-black text-xs font-mono bg-yellow-200 px-2',
-          body: 'text-black font-serif leading-loose',
-          container: 'bg-white border-4 border-black p-6',
-          font: 'font-sans'
-        };
-      
-      case 'windows-98':
-        return {
-          bg: 'bg-[#008080]',
-          header: 'bg-[#000080] text-white border-b-2 border-white',
-          headerText: 'text-white font-bold',
-          button: 'bg-[#c0c0c0] text-black px-2 border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] font-bold text-xs',
-          title: 'text-2xl font-bold text-navy',
-          date: 'text-gray-700 text-xs',
-          body: 'text-black',
-          container: 'bg-white border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-4 m-2',
-          font: 'font-sans'
-        };
-      
-      case 'retro-90':
-        return {
-          bg: 'bg-[#c0c0c0]',
-          header: 'bg-[#000080] text-white border-b-4 border-gray-400',
-          headerText: 'text-yellow-300 font-mono',
-          button: 'bg-[#c0c0c0] text-black px-2 border-2 border-white border-b-black border-r-black',
-          title: 'text-4xl font-black text-red-600 underline',
-          date: 'text-green-700 font-mono text-xs',
-          body: 'text-black font-serif leading-loose',
-          container: 'bg-white border-2 border-black m-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6',
-          font: 'font-serif'
-        };
-      
-      case 'hacker-terminal':
-        return {
-          bg: 'bg-black',
-          header: 'bg-black border-b border-green-500',
-          headerText: 'text-green-500 font-mono',
-          button: 'text-green-400 hover:text-green-300 px-2 border border-green-500 font-mono text-xs',
-          title: 'text-2xl font-bold text-green-500 font-mono',
-          date: 'text-green-600 text-xs font-mono',
-          body: 'text-green-300 font-mono leading-relaxed',
-          container: 'bg-black border border-green-500 p-6 m-4',
-          font: 'font-mono'
-        };
-      
-      default:
-        return {
-          bg: 'bg-white',
-          header: 'bg-white border-gray-200 shadow-sm',
-          headerText: 'text-gray-500',
-          button: 'text-gray-600 hover:bg-gray-100 px-3 py-1 rounded-full',
-          title: 'text-3xl font-bold text-gray-900',
-          date: 'text-gray-500 text-sm',
-          body: 'text-gray-800 prose-slate',
-          container: 'bg-white',
-          font: 'font-sans'
-        };
-    }
-  };
-
-  const config = getThemeConfig();
+  const config = getSearchTheme(theme).viewer;
   const pageConfig = result.pageConfig || {};
   const style = pageConfig.style || {};
   const layout = pageConfig.layout || 'article';

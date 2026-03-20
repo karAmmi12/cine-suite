@@ -4,9 +4,14 @@ import type { TerminalModuleConfig } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 import { AlertTriangle, Shield, Server, Code } from 'lucide-react';
 
-export const TerminalModule = () => {
-  const scene = useProjectStore((state) => state.getCurrentScene());
-  const config = scene?.module as TerminalModuleConfig;
+interface Props {
+  config?: TerminalModuleConfig;
+  typingText?: string;
+}
+
+export const TerminalModule = ({ config: propsConfig, typingText }: Props = {}) => {
+  const scene = useProjectStore((state: any) => state.getCurrentScene());
+  const config = propsConfig || (scene?.module as TerminalModuleConfig);
 
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -14,7 +19,8 @@ export const TerminalModule = () => {
   const [lineIndex, setLineIndex] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { displayValue, isComplete } = useMagicTyping(config?.triggerText || "");
+  const trigger = typingText || config?.triggerText || '';
+  const { displayValue, isComplete } = useMagicTyping(trigger);
 
   // Couleurs et icônes selon contexte
   const getTheme = () => {

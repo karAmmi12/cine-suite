@@ -1,98 +1,16 @@
 import type { SearchResult } from "../../../core/types/schema";
+import { getSearchTheme, type SearchTheme } from '../searchThemes';
 
 interface SearchResultsProps {
   results: SearchResult[];
   query: string;
-  theme: 'modern' | 'retro-2000' | 'retro-90' | 'yahoo-2005' | 'altavista-98' | 'windows-98' | 'hacker-terminal';
+  theme: SearchTheme;
   onResultClick: (id: string) => void;
 }
 
 export const SearchResults = ({ results, query, theme, onResultClick }: SearchResultsProps) => {
   
-  // Configuration des styles par thème
-  const getThemeStyles = (): {
-    container: string;
-    stats: string;
-    url: string;
-    title: string;
-    snippet: string;
-  } => {
-    switch(theme) {
-      case 'modern':
-        return {
-          container: 'bg-white font-sans',
-          stats: 'text-gray-500 text-sm',
-          url: 'text-green-700 text-sm',
-          title: 'text-[#1a0dab] text-xl font-normal group-hover:underline',
-          snippet: 'text-gray-600 text-sm'
-        };
-      
-      case 'yahoo-2005':
-        return {
-          container: 'bg-white font-sans',
-          stats: 'text-purple-700 text-sm font-bold bg-purple-50 p-2 rounded',
-          url: 'text-green-600 text-xs font-bold',
-          title: 'text-purple-900 text-lg font-bold group-hover:underline',
-          snippet: 'text-gray-700 text-sm'
-        };
-      
-      case 'retro-2000':
-        return {
-          container: 'bg-[#f0f4ff] font-sans',
-          stats: 'text-blue-800 text-sm font-medium bg-blue-100 px-3 py-1 inline-block border-l-4 border-blue-600',
-          url: 'text-blue-600 text-xs underline',
-          title: 'text-blue-900 text-lg font-semibold group-hover:text-blue-600',
-          snippet: 'text-gray-800 text-sm'
-        };
-      
-      case 'altavista-98':
-        return {
-          container: 'bg-[#ffffcc] font-sans',
-          stats: 'text-black text-sm font-mono bg-yellow-200 px-2 py-1 border border-black',
-          url: 'text-[#0000ee] text-sm underline font-mono',
-          title: 'text-[#0000ee] text-xl underline font-bold',
-          snippet: 'text-black text-sm leading-relaxed'
-        };
-      
-      case 'windows-98':
-        return {
-          container: 'bg-[#c0c0c0] font-sans',
-          stats: 'text-black text-sm bg-[#c0c0c0] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] px-2 py-1',
-          url: 'text-blue-800 text-sm font-bold',
-          title: 'text-navy text-lg font-bold underline',
-          snippet: 'text-black text-sm bg-white p-2 border border-gray-500'
-        };
-      
-      case 'retro-90':
-        return {
-          container: 'bg-[#c0c0c0] font-serif',
-          stats: 'text-red-700 text-sm font-mono bg-gray-200 px-2 py-1 border-2 border-black',
-          url: 'text-green-800 text-sm font-mono',
-          title: 'text-blue-800 text-xl underline font-black',
-          snippet: 'text-black text-base'
-        };
-      
-      case 'hacker-terminal':
-        return {
-          container: 'bg-black font-mono',
-          stats: 'text-green-500 text-xs border border-green-500 px-2 py-1 inline-block',
-          url: 'text-green-400 text-xs',
-          title: 'text-green-500 text-lg font-bold',
-          snippet: 'text-green-300 text-sm opacity-80'
-        };
-      
-      default:
-        return {
-          container: 'bg-white font-sans',
-          stats: 'text-gray-500 text-sm',
-          url: 'text-green-700 text-sm',
-          title: 'text-[#1a0dab] text-xl font-normal group-hover:underline',
-          snippet: 'text-gray-600 text-sm'
-        };
-    }
-  };
-
-  const styles = getThemeStyles();
+  const styles = getSearchTheme(theme).results;
 
   return (
     <div className={`w-full min-h-full text-left pt-6 pl-4 md:pl-36 pr-4 pb-20 ${styles.container}`}>

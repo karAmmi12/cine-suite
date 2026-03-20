@@ -25,4 +25,27 @@ dist-ssr
 
 # Documentation files
 *.md
-!README.md
+!/README.md
+
+# .NET Backend
+backend/bin/
+backend/obj/
+backend/publish/
+backend/*.user
+backend/*.suo
+backend/.vs/
+*.dll
+*.pdb
+*.exe
+
+# Electron
+electron/resources/server/
+electron/dist/
+electron/out/
+
+# Build and temp files
+release/
+dist-backend/
+check-storage.html
+.env*
+!.env.example

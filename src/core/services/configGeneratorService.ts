@@ -3,7 +3,7 @@
  * Utilise l'API Groq pour créer des configurations réalistes et cohérentes
  */
 
-import type { SearchModuleConfig, ChatModuleConfig, MailModuleConfig } from '../types/schema';
+import type { SearchModuleConfig, ChatModuleConfig, MailModuleConfig, TerminalModuleConfig } from '../types/schema';
 import { extractDateContext } from '../utils/dateHelper';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -360,4 +360,88 @@ export async function enrichConfiguration(
   
   if (!jsonMatch) return [];
   return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * Génère une configuration complète pour le module Terminal
+ */
+export async function generateTerminalConfig(
+  prompt: string,
+  options: GeneratorOptions
+): Promise<TerminalModuleConfig> {
+  const systemPrompt = `Tu es un expert en terminal Linux/Unix pour le cinéma.
+Génère une séquence de terminal réaliste et cinématographique au format JSON.
+
+Le JSON doit contenir:
+- triggerText: la commande shell de départ (vraie commande crédible)
+- lines: tableau de 10-20 lignes d'output réalistes
+- color: "green" | "blue" | "red" | "amber"
+- finalMessage: message final court et percutant (3-5 mots)
+- finalStatus: "success" | "error"
+
+${options.context ? `Contexte narratif: ${options.context}` : ''}
+
+Réponds UNIQUEMENT avec du JSON valide, sans markdown ni explication.`;
+
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${options.apiKey}`
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.9,
+      max_tokens: 2000
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || `Erreur API (${response.status}): Vérifiez votre clé API`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
+
+  if (!content) {
+    throw new Error("L'IA n'a pas retourné de réponse. Réessayez.");
+  }
+
+  let jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  }
+
+  if (!jsonMatch) {
+    throw new Error("L'IA n'a pas retourné de JSON valide. Reformulez votre demande.");
+  }
+
+  let config;
+  try {
+    config = JSON.parse(jsonMatch[0]);
+  } catch {
+    throw new Error("Format de réponse invalide. Simplifiez votre description.");
+  }
+
+  if (!config.triggerText || !Array.isArray(config.lines)) {
+    throw new Error("Données incomplètes. Reformulez votre demande.");
+  }
+
+  return {
+    type: 'terminal',
+    triggerText: config.triggerText,
+    lines: config.lines,
+    color: config.color || 'green',
+    finalMessage: config.finalMessage || 'OPÉRATION TERMINÉE',
+    finalStatus: config.finalStatus || 'success',
+    showProgressBar: true,
+    progressDuration: 5,
+    typingSpeed: 'fast'
+  };
 }

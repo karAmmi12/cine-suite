@@ -4,14 +4,20 @@ import type { MailModuleConfig } from '../../core/types/schema';
 import { useMagicTyping } from '../../core/hooks/useMagicTyping';
 import { Menu, Star, Inbox, Send, Trash, Edit3, ArrowLeft, Paperclip, StarIcon, AlertCircle } from 'lucide-react';
 
-export const MailModule = () => {
-  const scene = useProjectStore((state) => state.getCurrentScene());
-  const config = scene?.module as MailModuleConfig;
+interface Props {
+  config?: MailModuleConfig;
+  typingText?: string;
+}
+
+export const MailModule = ({ config: propsConfig, typingText }: Props = {}) => {
+  const scene = useProjectStore((state: any) => state.getCurrentScene());
+  const config = propsConfig || (scene?.module as MailModuleConfig);
 
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
 
-  const { displayValue, isComplete } = useMagicTyping(config?.triggerText || "", isComposing);
+  const trigger = typingText || config?.triggerText || '';
+  const { displayValue, isComplete } = useMagicTyping(trigger, isComposing);
 
   if (!config) return null;
 

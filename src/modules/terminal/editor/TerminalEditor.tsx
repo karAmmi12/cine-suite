@@ -1,292 +1,225 @@
-import { useRef, useState } from 'react';
-import { Play, Download, Upload, Terminal as TerminalIcon, Sparkles, Loader2, Key } from 'lucide-react';
-import { useProjectStore } from '../../../core/store/projectStore';
+import { useState } from 'react';
+import { Sparkles, Loader2 } from 'lucide-react';
+import { useEditorActions } from '../../../core/hooks/useEditorActions';
 import type { TerminalModuleConfig } from '../../../core/types/schema';
-import { downloadSceneConfig } from '../../../core/utils/fileHandler';
+import { generateTerminalConfig } from '../../../core/services/configGeneratorService';
+import { EditorShell } from '../../../ui/layout/EditorShell';
+
+const inputCls = 'w-full bg-[#1c1f26] border border-[rgba(180,151,94,0.25)] rounded-lg px-3 py-2 text-sm text-[#ebe7df] placeholder-[#4a4840] outline-none focus:border-[#d1b374] transition-colors';
+const labelCls = 'block text-[10px] font-semibold text-[#a9a49b] uppercase tracking-wider mb-1.5';
+const sectionCls = 'bg-[#14161b] border border-[rgba(180,151,94,0.12)] rounded-xl p-5';
+const sectionTitleCls = 'text-[10px] font-semibold text-[#d1b374] uppercase tracking-widest border-b border-[rgba(180,151,94,0.15)] pb-2 mb-4';
+const selectCls = `${inputCls} cursor-pointer`;
+
+const COLORS: { id: TerminalModuleConfig['color']; label: string; hex: string }[] = [
+  { id: 'green', label: 'Vert',  hex: '#4ade80' },
+  { id: 'blue',  label: 'Bleu',  hex: '#60a5fa' },
+  { id: 'red',   label: 'Rouge', hex: '#f87171' },
+  { id: 'amber', label: 'Amber', hex: '#fbbf24' },
+];
+
+const AI_CONTEXTS = [
+  'Hacking d\'un système gouvernemental',
+  'Compilation d\'un projet logiciel',
+  'Analyse d\'un serveur compromis',
+  'Déchiffrement de fichiers cryptés',
+  'Déploiement d\'une application',
+  'Scan réseau et détection d\'intrusion',
+  'Exfiltration de données sensibles',
+];
+
+// Génère du faux code technique aléatoire
+const generateFakeLogs = (): string[] => {
+  const words = ['BYPASS', 'MAINFRAME', 'ENCRYPTION', 'FIREWALL', 'PROXY', 'NODE', 'ROOT', 'ACCESS', 'TOKEN', 'HASH', 'INJECT', 'OVERRIDE'];
+  return Array.from({ length: 20 }, () => {
+    const cmd = words[Math.floor(Math.random() * words.length)];
+    const file = `SYS_${Math.floor(Math.random() * 9999)}.DAT`;
+    return `EXECUTING ${cmd} PROTOCOL ON ${file} ... [OK]`;
+  });
+};
 
 export const TerminalEditor = () => {
-  const currentScene = useProjectStore((state) => state.getCurrentScene());
-  const updateCurrentScene = useProjectStore((state) => state.updateCurrentScene);
-  const currentProjectId = useProjectStore((state) => state.currentProjectId);
-  const currentSceneId = useProjectStore((state) => state.currentSceneId);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { currentScene, updateCurrentScene, globalSettings } = useEditorActions();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Settings globaux
-  const globalSettings = currentScene?.globalSettings;
-  const updateGlobalSettings = (settings: any) => updateCurrentScene({ globalSettings: settings });
-
-  if (!currentScene || currentScene.module.type !== 'terminal') return <div>Erreur</div>;
+  if (!currentScene || currentScene.module.type !== 'terminal') return null;
   const config = currentScene.module as TerminalModuleConfig;
 
   const updateConfig = (key: keyof TerminalModuleConfig, value: any) => {
     updateCurrentScene({ module: { ...config, [key]: value } });
   };
 
-  // --- IA PROFESSIONNELLE: Génération contextuelle ---
-  const generateWithAI = async () => {
-    if (!globalSettings?.aiKey) {
-      alert("⚠️ Clé API Groq manquante ! Ajoutez-la en haut à droite.");
-      return;
-    }
+  const handleAiGeneration = async () => {
+    if (!globalSettings?.aiKey) { alert('Clé API Groq manquante — cliquez sur 🔑 en haut.'); return; }
 
-    const contexts = [
-      "Hacking d'un système gouvernemental",
-      "Compilation d'un projet logiciel",
-      "Analyse d'un serveur compromis",
-      "Déchiffrement de fichiers cryptés",
-      "Déploiement d'une application",
-      "Scan réseau et détection d'intrusion",
-      "Exfiltration de données sensibles"
-    ];
-    
-    const context = prompt(`💻 Choisissez un contexte ou entrez le vôtre:\n\n${contexts.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\nVotre choix (numéro ou texte) :`);
-    if (!context) return;
+    const contextList = AI_CONTEXTS.map((c, i) => `${i + 1}. ${c}`).join('\n');
+    const input = prompt(`Contexte du terminal (numéro ou texte libre) :\n\n${contextList}`);
+    if (!input) return;
 
-    // Si c'est un nombre, on prend le contexte correspondant
-    const selectedContext = !isNaN(Number(context)) && Number(context) > 0 && Number(context) <= contexts.length
-      ? contexts[Number(context) - 1]
-      : context;
+    const idx = parseInt(input, 10);
+    const context = (!isNaN(idx) && idx >= 1 && idx <= AI_CONTEXTS.length)
+      ? AI_CONTEXTS[idx - 1]
+      : input;
 
     setIsGenerating(true);
     try {
-      // Utilisation du SERVICE IA PROFESSIONNEL
-      const prompt = `Tu es un expert en terminal Linux/Unix. Génère une séquence Terminal réaliste pour: "${selectedContext}". 
-
-IMPORTANT:
-- "triggerText" doit être une VRAIE commande shell (ex: "sudo ./exploit.sh", "npm run deploy", "python3 decrypt.py", "nmap -sV 192.168.1.1")
-- "lines" contient les lignes d'output du terminal (résultats de la commande)
-- Utilise des commandes shell réelles et crédibles (bash, python, nmap, ssh, git, docker, etc.)
-
-Réponds UNIQUEMENT avec un JSON valide (sans markdown):
-{
-  "triggerText": "commande_shell_reelle",
-  "lines": ["[INFO] Starting process...", "Loading modules...", "Processing data...", "Success!"],
-  "color": "green",
-  "finalMessage": "OPERATION COMPLETE",
-  "finalStatus": "success"
-}`;
-
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${globalSettings.aiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.9,
-          max_tokens: 2000
-        })
-      });
-
-      if (!response.ok) throw new Error(`Erreur API: ${response.statusText}`);
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content;
-      
-      // Parse le JSON généré
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Format de réponse invalide");
-      
-      const generated = JSON.parse(jsonMatch[0]);
-      
-      // On applique TOUTE la configuration générée
-      updateCurrentScene({ 
-        module: { 
-          ...config,
-          triggerText: generated.triggerText,
-          lines: generated.lines,
-          color: generated.color,
-          finalMessage: generated.finalMessage,
-          finalStatus: generated.finalStatus
-        } 
-      });
-      
-      alert(`✅ Séquence Terminal générée par l'IA professionnelle !\nContexte: ${selectedContext}`);
+      const generated = await generateTerminalConfig(context, { apiKey: globalSettings.aiKey, context });
+      updateCurrentScene({ module: { ...config, ...generated } });
     } catch (e: any) {
-      alert("❌ Erreur IA : " + (e.message || e));
-      console.error(e);
+      alert('Erreur IA : ' + (e.message || e));
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // --- IA GENERATION DE LOGS SIMPLE (Fallback) ---
-  const generateLogs = () => {
-    // Petit helper pour remplir les lignes de code avec du faux charabia technique
-    const techWords = ["bypass", "mainframe", "encryption", "firewall", "proxy", "node", "root", "access", "token", "hash", "inject", "override"];
-    const newLines = Array.from({ length: 20 }).map(() => {
-        const cmd = techWords[Math.floor(Math.random() * techWords.length)].toUpperCase();
-        const file = `SYS_${Math.floor(Math.random() * 9999)}.DAT`;
-        return `EXECUTING ${cmd} PROTOCOL ON ${file} ... [OK]`;
-    });
-    updateConfig('lines', newLines);
-  };
-
-  // Import/Export
-  const handleExport = () => downloadSceneConfig(currentScene);
-  const handleImportClick = () => fileInputRef.current?.click();
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // TODO: Implémenter loadScene dans projectStore
-      alert("Import de scène temporairement désactivé (refactoring en cours)");
-    }
-  };
+  const activeColor = COLORS.find(c => c.id === config.color) || COLORS[0];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8 font-mono pb-32">
-        <div className="max-w-4xl mx-auto">
-            {/* HEADER */}
-            <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4 sticky top-4 bg-gray-900 z-20">
-                <div>
-                  <h1 className="text-xl font-bold text-green-500 flex items-center gap-2">
-                      <TerminalIcon /> TERMINAL EDITOR
-                  </h1>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mt-1">Éditeur de Terminal Cinématique</p>
-                </div>
-                <div className="flex gap-2 items-center">
-                    {/* Clé API */}
-                    <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-2 border border-gray-700 h-9 mr-2">
-                        <Key size={14} className="text-gray-400"/>
-                        <input 
-                            type="password" 
-                            placeholder="Clé API Groq..."
-                            value={globalSettings?.aiKey || ''}
-                            onChange={(e) => updateGlobalSettings({ ...globalSettings, aiKey: e.target.value })}
-                            className="bg-transparent border-none outline-none text-xs w-24 focus:w-40 transition-all text-white"
-                        />
-                    </div>
+    <EditorShell>
+      <div className="max-w-3xl mx-auto px-5 py-6 space-y-6 pb-24">
 
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                    <button onClick={handleImportClick} className="p-2 bg-gray-800 rounded hover:bg-gray-700"><Upload size={18}/></button>
-                    <button onClick={handleExport} className="p-2 bg-gray-800 rounded hover:bg-gray-700"><Download size={18}/></button>
-                    
-                    <div className="w-px h-8 bg-gray-700"></div>
+        {/* ─── Génération IA ─── */}
+        <button
+          onClick={handleAiGeneration}
+          disabled={isGenerating}
+          className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-semibold px-5 py-3.5 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-violet-900/30"
+        >
+          {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          {isGenerating ? 'Génération avec l\'IA...' : 'Générer avec l\'IA'}
+        </button>
 
-                    <button 
-                        onClick={() => window.open(`/project/${currentProjectId}/scene/${currentSceneId}/play`, 'CinePlayer', 'popup=yes,width=1280,height=720')}
-                        className="bg-green-600 text-black px-4 py-2 rounded font-bold hover:bg-green-500 flex items-center gap-2"
-                    >
-                        <Play size={16}/> RUN
-                    </button>
-                </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* BOUTON IA GÉNÉRATION */}
-            <div className="mb-6">
-                <button
-                    onClick={generateWithAI}
-                    disabled={isGenerating}
-                    className="w-full bg-linear-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-bold hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-purple-500/50 transition-all"
-                >
-                    {isGenerating ? (
-                        <>
-                            <Loader2 size={20} className="animate-spin" />
-                            <span>Génération en cours avec l'IA...</span>
-                        </>
-                    ) : (
-                        <>
-                            <Sparkles size={20} />
-                            <span>✨ GÉNÉRER AVEC L'IA PROFESSIONNELLE</span>
-                        </>
-                    )}
-                </button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                    L'IA génère des séquences Terminal réalistes selon le contexte (hacking, compilation, analyse...)
-                </p>
-            </div>
+          {/* ─── Paramètres ─── */}
+          <section className={sectionCls}>
+            <h2 className={sectionTitleCls}>Paramètres</h2>
+            <div className="space-y-5">
 
-            {/* CONFIGURATION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
-                <div className="space-y-6">
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">COULEUR</label>
-                        <div className="flex gap-2">
-                            {['green', 'blue', 'red', 'amber'].map(c => (
-                                <button 
-                                    key={c}
-                                    onClick={() => updateConfig('color', c)}
-                                    className={`w-8 h-8 rounded-full border-2 ${config.color === c ? 'border-white' : 'border-transparent'}`}
-                                    style={{ backgroundColor: c === 'amber' ? 'orange' : c === 'green' ? 'lime' : c }}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">COMMANDE DE DÉPART (MAGIC TYPING)</label>
-                        <input 
-                            value={config.triggerText}
-                            onChange={(e) => updateConfig('triggerText', e.target.value)}
-                            className="w-full bg-black border border-gray-700 p-2 text-green-500 font-mono"
-                            placeholder="ex: sudo hack_nsa.exe"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">VITESSE DE DÉFILEMENT</label>
-                        <select 
-                            value={config.typingSpeed} 
-                            onChange={(e) => updateConfig('typingSpeed', e.target.value)}
-                            className="w-full bg-black border border-gray-700 p-2"
-                        >
-                            <option value="slow">Lente (Réalisme)</option>
-                            <option value="fast">Rapide (Hacking)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">MESSAGE FINAL</label>
-                        <input 
-                            value={config.finalMessage}
-                            onChange={(e) => updateConfig('finalMessage', e.target.value)}
-                            className="w-full bg-black border border-gray-700 p-2 font-bold"
-                        />
-                        <div className="flex gap-2 mt-2">
-                            <button onClick={() => updateConfig('finalStatus', 'success')} className={`flex-1 p-2 border ${config.finalStatus === 'success' ? 'bg-green-900 border-green-500' : 'border-gray-700'}`}>SUCCESS</button>
-                            <button onClick={() => updateConfig('finalStatus', 'error')} className={`flex-1 p-2 border ${config.finalStatus === 'error' ? 'bg-red-900 border-red-500' : 'border-gray-700'}`}>ERROR</button>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">DURÉE BARRE PROGRESSION (SEC)</label>
-                        <input 
-                            type="number"
-                            value={config.progressDuration}
-                            onChange={(e) => updateConfig('progressDuration', parseInt(e.target.value))}
-                            className="w-full bg-black border border-gray-700 p-2"
-                        />
-                        <div className="flex items-center gap-2 mt-2">
-                            <input 
-                                type="checkbox" 
-                                checked={config.showProgressBar} 
-                                onChange={(e) => updateConfig('showProgressBar', e.target.checked)}
-                            />
-                            <span className="text-sm">Afficher la barre</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex flex-col h-full">
-                    <div className="flex justify-between mb-1">
-                        <label className="text-xs text-gray-400">LIGNES DE CODE (LOGS)</label>
-                        <button onClick={generateLogs} className="text-xs text-green-500 hover:underline flex items-center gap-1">
-                          <Sparkles size={12} /> Générer Faux Code
-                        </button>
-                    </div>
-                    <textarea 
-                        value={(config.lines || []).join('\n')}
-                        onChange={(e) => updateConfig('lines', e.target.value.split('\n'))}
-                        className="flex-1 w-full bg-black border border-gray-700 p-2 text-xs font-mono text-gray-500 whitespace-pre"
+              {/* Couleur */}
+              <div>
+                <label className={labelCls}>Couleur du terminal</label>
+                <div className="flex gap-2">
+                  {COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => updateConfig('color', c.id)}
+                      title={c.label}
+                      className={`w-9 h-9 rounded-full border-2 transition-all ${
+                        config.color === c.id
+                          ? 'border-white scale-110'
+                          : 'border-transparent opacity-50 hover:opacity-75'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
                     />
+                  ))}
                 </div>
+              </div>
 
+              {/* Commande de départ */}
+              <div>
+                <label className={labelCls}>Commande — Magic Typing</label>
+                <input
+                  value={config.triggerText}
+                  onChange={(e) => updateConfig('triggerText', e.target.value)}
+                  placeholder="sudo ./hack_nsa.sh"
+                  className={`${inputCls} font-mono`}
+                  style={{ color: activeColor.hex }}
+                />
+              </div>
+
+              {/* Vitesse */}
+              <div>
+                <label className={labelCls}>Vitesse de défilement</label>
+                <select
+                  value={config.typingSpeed}
+                  onChange={(e) => updateConfig('typingSpeed', e.target.value)}
+                  className={selectCls}
+                >
+                  <option value="slow">Lente — Réalisme</option>
+                  <option value="fast">Rapide — Hacking</option>
+                  <option value="instant">Instantanée</option>
+                </select>
+              </div>
+
+              {/* Message final */}
+              <div>
+                <label className={labelCls}>Message final</label>
+                <input
+                  value={config.finalMessage}
+                  onChange={(e) => updateConfig('finalMessage', e.target.value)}
+                  className={inputCls}
+                  placeholder="ex: ACCESS GRANTED"
+                />
+                <div className="flex gap-2 mt-2">
+                  {(['success', 'error'] as const).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => updateConfig('finalStatus', status)}
+                      className={`flex-1 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                        config.finalStatus === status
+                          ? status === 'success'
+                            ? 'bg-emerald-900/50 border-emerald-600 text-emerald-300'
+                            : 'bg-red-900/50 border-red-600 text-red-300'
+                          : 'bg-[#1c1f26] border-[rgba(180,151,94,0.2)] text-[#5a5862]'
+                      }`}
+                    >
+                      {status === 'success' ? 'SUCCESS' : 'ERROR'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Barre de progression */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={config.showProgressBar}
+                    onChange={(e) => updateConfig('showProgressBar', e.target.checked)}
+                    className="w-3.5 h-3.5 accent-[#d1b374]"
+                  />
+                  <span className={labelCls.replace('mb-1.5', '')}>Barre de progression</span>
+                </label>
+                {config.showProgressBar && (
+                  <div>
+                    <label className={labelCls}>Durée (secondes)</label>
+                    <input
+                      type="number"
+                      value={config.progressDuration}
+                      onChange={(e) => updateConfig('progressDuration', parseInt(e.target.value))}
+                      min={1}
+                      max={60}
+                      className={inputCls}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
+          </section>
+
+          {/* ─── Logs ─── */}
+          <section className={`${sectionCls} flex flex-col`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={sectionTitleCls.replace('mb-4', '')} style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                Lignes de log
+              </h2>
+              <button
+                onClick={() => updateConfig('lines', generateFakeLogs())}
+                className="flex items-center gap-1 text-xs text-[#d1b374] hover:text-[#e0c896] transition-colors"
+              >
+                <Sparkles size={11} /> Générer
+              </button>
+            </div>
+            <textarea
+              value={(config.lines || []).join('\n')}
+              onChange={(e) => updateConfig('lines', e.target.value.split('\n'))}
+              className="flex-1 min-h-80 w-full bg-[#090a0c] border border-[rgba(180,151,94,0.1)] rounded-lg p-3 text-xs font-mono resize-none outline-none"
+              style={{ color: activeColor.hex, lineHeight: '1.7' }}
+              placeholder={`INITIALIZING SEQUENCE...\nCONNECTING TO HOST...\nACCESS GRANTED`}
+            />
+          </section>
         </div>
-    </div>
+      </div>
+    </EditorShell>
   );
 };

@@ -4,7 +4,7 @@ import { useProjectStore } from '../core/store/projectStore';
 import { generateSearchConfig } from '../core/services/configGeneratorService';
 import { generateChatConfig } from '../core/services/configGeneratorService';
 import { generateMailConfig } from '../core/services/configGeneratorService';
-import { extractDateContext } from '../core/utils/dateHelper';
+import { generateTerminalConfig } from '../core/services/configGeneratorService';
 
 interface CineAssistantProps {
   onClose: () => void;
@@ -81,96 +81,7 @@ export const CineAssistant = ({ onClose }: CineAssistantProps) => {
           generatedModule = await generateMailConfig(description, { apiKey });
           break;
         case 'terminal':
-          // Génération Terminal via API directe
-          const dateContext = extractDateContext(description);
-          
-          const prompt = `Tu es un expert en création de scènes Terminal pour le cinéma.
-
-Contexte demandé: "${description}"
-
-IMPORTANT - Contexte temporel: ${dateContext.instruction}
-Si des dates/timestamps apparaissent dans les logs, adapte-les à cette période.
-Si c'est une époque ancienne (années 90-2000), adapte les commandes et technologies (anciens OS, vieux protocoles).
-
-Génère une séquence de terminal réaliste et cinématographique. Réponds avec un JSON valide contenant:
-- triggerText: la commande shell de départ (exemple: "ssh root@server.com")
-- lines: tableau de lignes qui apparaissent (10-20 lignes, réalistes avec timestamps, préfixes, etc.)
-- color: "green" (normal), "blue" (ssh/réseau), "red" (alerte/hack), ou "amber" (build/compilation)
-- finalMessage: message final court et percutant (3-5 mots max)
-- finalStatus: "success" ou "error"
-
-Exemple:
-{
-  "triggerText": "ssh admin@target.gov",
-  "lines": ["Connecting...", "Password accepted", "$ ls /classified"],
-  "color": "red",
-  "finalMessage": "ACCESS GRANTED",
-  "finalStatus": "success"
-}
-
-Réponds UNIQUEMENT avec le JSON, sans explication.`;
-
-          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.8,
-              max_tokens: 2000
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `Erreur API: ${response.status}`);
-          }
-
-          const data = await response.json();
-          const content = data.choices[0]?.message?.content;
-          
-          if (!content) {
-            throw new Error("L'IA n'a pas répondu. Vérifiez votre clé API.");
-          }
-
-          // Extraction JSON plus permissive
-          let jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            // Tentative de nettoyage si markdown ou texte autour
-            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-          }
-          
-          if (!jsonMatch) {
-            throw new Error("❌ L'IA n'a pas retourné de JSON valide. Essayez de reformuler votre description.");
-          }
-          
-          let parsedData;
-          try {
-            parsedData = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            throw new Error("❌ JSON mal formé. Réessayez avec une description plus simple.");
-          }
-
-          // Validation des champs obligatoires avec valeurs par défaut
-          if (!parsedData.triggerText || !Array.isArray(parsedData.lines)) {
-            throw new Error("❌ Données incomplètes. Reformulez votre demande plus clairement.");
-          }
-
-          generatedModule = {
-            type: 'terminal' as const,
-            triggerText: parsedData.triggerText,
-            lines: parsedData.lines,
-            color: parsedData.color || 'green',
-            finalMessage: parsedData.finalMessage || 'OPÉRATION TERMINÉE',
-            finalStatus: parsedData.finalStatus || 'success',
-            showProgressBar: true,
-            progressDuration: 5,
-            typingSpeed: 'fast' as const
-          };
+          generatedModule = await generateTerminalConfig(description, { apiKey });
           break;
       }
 

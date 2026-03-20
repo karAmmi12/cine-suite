@@ -4,5 +4,3 @@
  */
 
 export * from './themeEngine';
-export * from './magicTyping';
-export * from './offlineController';
